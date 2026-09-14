@@ -10,19 +10,35 @@ export type Placement = ReviewSettings['placement'];
 export type Transform = ReviewSettings['transform'];
 export type ApplyMode = ReviewSettings['mode'];
 
-/** Real distances (meters), the group's usual middle on the middle of the stage, each formation centred. */
-export const DEFAULT_PLACEMENT: Placement = { flip: false, spread: 1, depth: 1, fill: false, center: true };
+/** Real distances (meters), the middle of the room (camera axis) on the middle of the stage. */
+export const DEFAULT_PLACEMENT: Placement = { flip: false, spread: 1, depth: 1, fill: false, centre: 'room', shift: 0 };
+
+export const centreOf = (placement: Placement) => placement.centre ?? 'room';
 
 /**
- * Each formation centred left-right on the stage: the camera is rarely exactly in the middle of the room and the
- * group drifts, but a formation is meant to be centred (the person in the middle on the centre line).
+ * Each formation centred left-right on its middle dancer ("Milieu du groupe"): for a video whose camera is not in the
+ * middle of the room. It also moves formations that are meant to stand on one side, hence not the default.
  */
 export function centerFormations(formations: DetectedFormation[]): DetectedFormation[] {
-  return formations.map((f) => {
-    if (!f.positions.length) return f;
-    const mid = f.positions.reduce((sum, p) => sum + p.x, 0) / f.positions.length;
-    return { ...f, positions: f.positions.map((p) => ({ x: p.x - mid, y: p.y })) };
-  });
+  return formations.map((f) => ({ ...f, positions: centred(f.positions) }));
+}
+
+/**
+ * The middle of a formation, left-right: the dancer in the middle (odd number of people) or halfway between the two in
+ * the middle (even number). Unlike the average, one dancer standing apart does not pull everyone off the centre line.
+ */
+export function middleX(positions: Vec[]) {
+  if (!positions.length) return 0;
+  const xs = positions.map((p) => p.x).sort((a, b) => a - b);
+  const m = xs.length >> 1;
+  return xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2;
+}
+
+/** Positions moved left-right so the middle of the formation is on the centre line. */
+export function centred(positions: Vec[]): Vec[] {
+  if (!positions.length) return positions;
+  const mid = middleX(positions);
+  return positions.map((p) => ({ x: p.x - mid, y: p.y }));
 }
 
 /** Positions on the stage (meters, same axes as the editor) over time. */
@@ -67,8 +83,9 @@ export function applySwaps(tracks: Track[], swaps: Swap[]): Track[] {
 }
 
 /**
- * Puts the group on the stage: the middle of the group (where it usually stands) on the middle of the stage,
- * real distances, made smaller only when it would not fit ("fill": made as big as the stage allows).
+ * Puts the group on the stage, real distances, made smaller only when it would not fit ("fill": as big as the stage
+ * allows). Left-right, the middle of the room is the camera axis (dance practices are filmed from the middle of the
+ * mirror), moved by `shift`; front-back, where the group usually stands is the middle of the stage.
  */
 export function placeTracks(tracks: Track[], stage: StageSettings, placement: Placement): { tracks: Placed[]; transform: Transform } {
   const transform: Transform = { flip: placement.flip, spread: placement.spread, depth: placement.depth, ox: 0, oy: 0, s: 1 };
@@ -97,12 +114,15 @@ export function placeTracks(tracks: Track[], stage: StageSettings, placement: Pl
     }
   }
   if (xs.length) {
-    transform.ox = middleX.length ? median(middleX) : (percentile(xs, 0.03) + percentile(xs, 0.97)) / 2;
+    const room = centreOf(placement) === 'room';
+    transform.ox = room ? 0 : middleX.length ? median(middleX) : (percentile(xs, 0.03) + percentile(xs, 0.97)) / 2;
     transform.oy = middleY.length ? median(middleY) : (percentile(ys, 0.03) + percentile(ys, 0.97)) / 2;
     const halfW = Math.max(0.25, Math.abs(percentile(xs, 0.03) - transform.ox), Math.abs(percentile(xs, 0.97) - transform.ox));
     const halfD = Math.max(0.25, Math.abs(percentile(ys, 0.03) - transform.oy), Math.abs(percentile(ys, 0.97) - transform.oy));
     const fit = Math.min((stage.width / 2) * 0.92 / halfW, (stage.depth / 2) * 0.92 / halfD);
     transform.s = placement.fill ? Math.max(0.3, Math.min(2.5, fit)) : Math.min(1, fit);
+    // stage x = (x - ox) × s: a shift of `shift` meters on the stage
+    if (room && placement.shift) transform.ox = -placement.shift / transform.s;
   }
   return {
     transform,
@@ -292,7 +312,10 @@ export function alignToGrid(points: Vec[], stage: StageSettings): Vec[] {
   return out;
 }
 
-/** Positions of the chosen dancers; when fewer dancers than people, the kept ones can move back to the middle. */
+/**
+ * Positions of the chosen dancers, where they are in the video. Only when asked ("regroup"), with fewer dancers than
+ * people, the kept ones are moved together towards the middle of the stage.
+ */
 function dancerPositions(positions: Vec[], mapping: (ID | null)[], recenter: boolean, grid: boolean, stage: StageSettings): Map<ID, Vec> {
   const mine = positions.map((p, k) => ({ p, id: mapping[k] })).filter((e): e is { p: Vec; id: ID } => !!e.id);
   let dx = 0;
@@ -413,12 +436,6 @@ function moves(raw: Vec[], applied: (Vec | undefined)[]) {
     dy: raw.map((p, k) => r2((applied[k]?.y ?? p.y) - p.y)),
   };
 }
-
-const centred = (positions: Vec[]) => {
-  if (!positions.length) return positions;
-  const mid = positions.reduce((sum, p) => sum + p.x, 0) / positions.length;
-  return positions.map((p) => ({ x: p.x - mid, y: p.y }));
-};
 
 /** Holds converted to the choreography clock, snapped to the beats, never overlapping. */
 function choreoHolds(original: Choreo, formations: DetectedFormation[], snap: boolean) {

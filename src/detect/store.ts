@@ -9,7 +9,7 @@ import { playback } from '../store/playback';
 import { analysisSize, loadAnalysis, loadApplied, runAnalysis, type Ghosts } from './analysis';
 import { loadDetector } from './detector';
 import { fitFloor, toFloor } from './floor';
-import { alignToGrid, applyTransform, DEFAULT_PLACEMENT, defaultMapping, placeTracks } from './formations';
+import { alignToGrid, applyTransform, centred, DEFAULT_PLACEMENT, defaultMapping, placeTracks } from './formations';
 import { trackPeople } from './track';
 
 interface DetectUi {
@@ -156,9 +156,8 @@ export async function placeFromFrame() {
     const target = now.progress >= 0.5 && items[index + 1] ? items[index + 1] : items[index];
     if (!target) return;
     const dancers = sortedDancers(doc);
-    // the group centred left-right, like the formations of a full detection
-    const mid = points.reduce((sum, p) => sum + p.x, 0) / points.length;
-    points = points.map((p) => ({ x: p.x - mid, y: p.y }));
+    // same centre as the detection of this choreography: the room (camera axis, already in the placement) or the group
+    if (analysis && (await loadApplied(video.hash, doc.id))?.review.placement.centre === 'group') points = centred(points);
     if (doc.stage.snap) points = alignToGrid(points, doc.stage);
     const mapping = defaultMapping(points, dancers.map((d) => ({ id: d.id, x: target.f.positions[d.id]?.x ?? 0 })));
     let placed = 0;

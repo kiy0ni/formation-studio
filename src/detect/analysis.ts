@@ -31,7 +31,18 @@ export interface Swap {
 export interface ReviewSettings {
   people: number;
   swaps: Swap[];
-  placement: { flip: boolean; spread: number; depth: number; fill: boolean; center?: boolean };
+  placement: {
+    flip: boolean;
+    spread: number;
+    depth: number;
+    fill: boolean;
+    /** 2.1–2.2 (each formation on its middle dancer, on by default): ignored, see `centre`. */
+    center?: boolean;
+    /** Centre of the stage: the middle of the room (camera axis) or each formation's middle dancer. */
+    centre?: 'room' | 'group';
+    /** Meters added left-right to everything (camera not exactly in the middle of the room). */
+    shift?: number;
+  };
   sensitivity: number;
   mapping: (ID | null)[];
   mode: 'all' | 'positions' | 'timings';
@@ -40,7 +51,10 @@ export interface ReviewSettings {
   /** Routes and start times during transitions taken from the video. */
   paths?: boolean;
   snap: boolean;
-  recenter: boolean;
+  /** Before 2.2.1 (was on by default and moved the kept dancers off their places): ignored. */
+  recenter?: boolean;
+  /** Fewer dancers than people: move the kept ones together towards the middle. */
+  regroup?: boolean;
   transform: { flip: boolean; spread: number; depth: number; ox: number; oy: number; s: number };
 }
 

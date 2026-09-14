@@ -112,6 +112,20 @@ test('routes: a dancer who waits before moving gets a late start', () => {
   assert.equal(route.path, undefined);
 });
 
+test('centre: the dancer in the middle goes on the centre line, even with someone standing apart', async () => {
+  const { centerFormations, centred } = await import('../src/detect/formations');
+  const out = centred([
+    { x: -3, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0.7, y: 0 },
+    { x: 1.2, y: 0 },
+    { x: 1.6, y: 0 },
+  ]);
+  assert.equal(out[2].x, 0);
+  const even = centerFormations([{ start: 0, end: 1, ranges: [[0, 1]], positions: [{ x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }, { x: 10, y: 0 }] }]);
+  assert.deepEqual(even[0].positions.map((p) => p.x), [-1.5, -0.5, 0.5, 7.5]);
+});
+
 test('grid: the nearest mark, never two dancers on the same one', () => {
   const stage = { ...defaultStage(), gridStep: 0.5 };
   const out = alignToGrid(
@@ -203,4 +217,18 @@ test('apply: anchors put each ghost exactly on its dancer during the hold', asyn
       assert.ok(Math.abs(raw[k].x + anchor.dx[k] - p.x) < 0.011 && Math.abs(raw[k].y + anchor.dy[k] - p.y) < 0.011, `formation ${i + 1}, dancer ${k + 1}`);
     });
   });
+});
+
+test('centre of the room: someone standing in the middle of the video stays on the centre line, even in a lopsided formation', async () => {
+  const { placeTracks, DEFAULT_PLACEMENT } = await import('../src/detect/formations');
+  const { defaultStage } = await import('../src/lib/model');
+  // five people: three on the left, one exactly on the camera axis, one on the right
+  const xs = [-2.5, -1.8, -1.2, 0, 1.4];
+  const tracks = xs.map((x) => ({ xs: Float32Array.of(x, x), ys: Float32Array.of(-6, -6), seen: Uint8Array.of(1, 1), det: Int16Array.of(0, 0), sig: [] }));
+  const room = placeTracks(tracks, defaultStage(), DEFAULT_PLACEMENT);
+  assert.ok(Math.abs(room.tracks[3].xs[0]) < 1e-6, `middle of the room at ${room.tracks[3].xs[0]}`);
+  const shifted = placeTracks(tracks, defaultStage(), { ...DEFAULT_PLACEMENT, shift: 0.5 });
+  assert.ok(Math.abs(shifted.tracks[3].xs[0] - 0.5) < 1e-6, `shifted to ${shifted.tracks[3].xs[0]}`);
+  const group = placeTracks(tracks, defaultStage(), { ...DEFAULT_PLACEMENT, centre: 'group' });
+  assert.ok(Math.abs(group.tracks[3].xs[0]) > 0.3, 'the group option moves the formation to its own middle');
 });
