@@ -20,7 +20,7 @@ export function Modal({
   useEffect(() => {
     // Escape closes the dialog, unless a menu is open on top of it (it closes itself first)
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || document.querySelector('.floating')) return;
+      if (e.key !== 'Escape' || document.querySelector('.floating.menu, .floating.popover')) return;
       onClose();
     };
     window.addEventListener('keydown', onKey);

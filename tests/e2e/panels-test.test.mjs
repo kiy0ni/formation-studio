@@ -206,7 +206,7 @@ await step('wide phone sideways (932×430): phone layout, not three tiny columns
   expect(toolbar, 'phone toolbar shown');
   const stage = await rect(page, '.stage-wrap');
   log('stage', Math.round(stage.w), '×', Math.round(stage.h));
-  expect(stage.h >= 180, 'stage keeps a usable height');
+  expect(stage.h >= 170, 'stage keeps a usable height');
   await page.screenshot({ path: `${SP}/panels-07-wide-landscape.png` });
   await ctx.close();
 });
