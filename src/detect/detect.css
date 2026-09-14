@@ -244,6 +244,52 @@
   align-items: center;
   gap: 10px;
 }
+.detect-person.unsure {
+  grid-template-columns: 44px auto minmax(0, 1fr) auto;
+}
+.detect-unsure {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(255, 176, 32, 0.16);
+  color: var(--warn);
+  white-space: nowrap;
+}
+.detect-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.detect-subhead h4 {
+  margin: 0;
+}
+.detect-strip {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.detect-strip-item {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.detect-strip-item small {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.detect-thumb.small {
+  height: 72px;
+  max-width: 54px;
+}
 .detect-thumb {
   display: block;
   justify-self: center;

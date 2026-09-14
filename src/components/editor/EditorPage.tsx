@@ -10,7 +10,7 @@ import { useLayout, useMedia } from '../../store/layout';
 import { loadMusic } from '../../store/music';
 import { playback } from '../../store/playback';
 import { useSaveStatus } from '../../store/save';
-import { useRefVideo } from '../../video/refVideo';
+import { loadRefVideo, useRefVideo } from '../../video/refVideo';
 import { RefVideoJob, RefVideoPlayer, useWideLayout } from '../../video/RefVideoPlayer';
 import { Icon } from '../common/Icon';
 import { FormationList } from './FormationList';
@@ -52,13 +52,14 @@ export function EditorPage({ id }: { id: string }) {
       useEditor.getState().load(doc, doc.collab?.role === 'view');
       useEditor.setState({ sheetOpen: false, dialog: null });
       setStatus('ready');
-    });
+    }).catch(() => alive && setStatus('missing'));
     return () => {
       alive = false;
       playback.pause();
       const doc = useEditor.getState().doc;
       if (doc && doc.id === id) db.saveChoreo(doc);
       useEditor.getState().unload();
+      void loadRefVideo(undefined);
     };
   }, [id]);
 
@@ -315,7 +316,7 @@ function useShortcuts() {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e)) return;
       const s = useEditor.getState();
-      if (!s.doc) return;
+      if (!s.doc || s.dialog) return;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
 

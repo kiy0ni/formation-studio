@@ -93,6 +93,16 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
   - rapide : `AUTO_DETECT_ENABLED = false` dans `src/lib/config.ts`, puis publier ;
   - complet : revenir au repère `avant-detection-auto` (`git revert` du merge « Détection automatique », ou `git reset --hard avant-detection-auto` sur une branche), puis `npm uninstall @mediapipe/tasks-vision` si besoin.
 
+## Alertes à l'installation (Mac, Windows, Android)
+
+Les apps ne sont pas signées par Apple / Microsoft : macOS affiche « Apple n'a pas pu confirmer… », Windows « Windows a protégé votre ordinateur ». Le code est le même que le site ; c'est une question de certificat payant. L'app web installée (première option de « Installer ») n'a aucune alerte.
+
+Tout est prêt pour signer dès que les identifiants existent, sans changer le code :
+
+- **Mac** (compte Apple Developer, 99 €/an) : certificat « Developer ID Application » dans le trousseau du Mac, puis `APPLE_ID=… APPLE_APP_SPECIFIC_PASSWORD=… APPLE_TEAM_ID=… npm run build:desktop -- --mac` : l'app est signée, durcie et notarisée (électron-builder). Plus aucune alerte.
+- **Windows** (Azure Artifact Signing, ≈ 10 $/mois, ouvert aux particuliers de l'UE avec vérification d'identité) : la signature ne marche que sur Windows, donc via GitHub Actions → workflow « Windows signé » avec les secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SIGN_ENDPOINT`, `AZURE_SIGN_ACCOUNT`, `AZURE_SIGN_PROFILE`. Il remplace `Lineup-windows.exe` sur la release indiquée. Gratuit possible avec SignPath Foundation si le dépôt passe sous licence open source (MIT…) avec une page « code signing policy ».
+- **Android** : l'APK est déjà signé (clé dans `~/.formation-studio/`) ; l'avertissement « source inconnue » disparaît seulement via le Play Store (compte 25 $ une fois ; compte personnel : test fermé avec 12 testeurs pendant 14 jours avant publication).
+
 ## iPhone
 
 - Le plus simple : Safari → le site → Partager → « Sur l’écran d’accueil » (gratuit, permanent, même compte).
@@ -103,7 +113,7 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 
 ```bash
 npm install
-npm run dev        # app (http://localhost:5173) + serveur de collaboration (port 8787)
+npm run dev        # app (http://localhost:5173)
 ```
 
 Production (un seul processus sert l'app et la collaboration) :
@@ -113,6 +123,11 @@ npm run build
 npm start          # http://127.0.0.1:8787
 npm run lan        # accessible depuis les téléphones du même réseau Wi-Fi
 ```
+
+## Tests
+
+- `npm run typecheck` puis `npm test` : tests unitaires (maths de la détection : apparence, suivi à travers un croisement, formations, trajets, grille, « qui danse qui », sol). Lancés par GitHub Actions à chaque push.
+- `npm run test:e2e` : tests navigateur (voir `tests/e2e/README.md`).
 
 ## Fonctionnalités
 

@@ -3,7 +3,7 @@ import type { Box } from './detector';
 /**
  * What a person looks like: colors of the hair, top, arms (sleeves or skin), pants and shoes.
  * With a fixed camera the empty room is known, so only the person's own pixels are counted
- * (a white wall no longer looks like blond hair).
+ * (a white wall no longer looks like blond hair). Stored as 0..255 counts per color bin, per body part.
  */
 
 const BINS = 28;
@@ -19,11 +19,6 @@ const REGIONS: { rects: Rect[]; weight: number }[] = [
   { rects: [[0.1, 0.9, 0.88, 1.0]], weight: 0.5 }, // shoes
 ];
 export const SIGNATURE_LENGTH = BINS * REGIONS.length;
-/** Looks measured by earlier versions stay comparable with each other. */
-const OLDER_WEIGHTS: Record<number, number[]> = {
-  [4 * BINS]: [1.3, 1, 1, 0.4],
-  [6 * BINS]: [1.3, 1, 1, 1, 1, 0.5],
-};
 
 /** Picture of the room without the dancers (smaller image), or null when the camera moves. */
 export interface Background {
@@ -65,7 +60,15 @@ function bin(r: number, g: number, b: number) {
   return 4 + Math.floor(hue / 30) * 2 + (v < 0.6 ? 0 : 1);
 }
 
-export function signature(img: ImageData, box: Box, background: Background | null): number[] {
+/** The pixels `img` covers inside the full image (`x`, `y` = its top-left corner; `width`, `height` = the full image). */
+export interface View {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export function signature(img: ImageData, box: Box, background: Background | null, view: View = { x: 0, y: 0, width: img.width, height: img.height }): number[] {
   const out = new Array<number>(SIGNATURE_LENGTH).fill(0);
   const person: number[] = [];
   const all: number[] = [];
@@ -73,23 +76,23 @@ export function signature(img: ImageData, box: Box, background: Background | nul
     person.length = 0;
     all.length = 0;
     for (const [x0, x1, y0, y1] of rects) {
-      const px0 = Math.max(0, Math.floor((box.x + box.w * x0) * img.width));
-      const px1 = Math.min(img.width - 1, Math.ceil((box.x + box.w * x1) * img.width));
-      const py0 = Math.max(0, Math.floor((box.y + box.h * y0) * img.height));
-      const py1 = Math.min(img.height - 1, Math.ceil((box.y + box.h * y1) * img.height));
+      const px0 = Math.max(view.x, Math.floor((box.x + box.w * x0) * view.width));
+      const px1 = Math.min(view.x + img.width - 1, Math.ceil((box.x + box.w * x1) * view.width));
+      const py0 = Math.max(view.y, Math.floor((box.y + box.h * y0) * view.height));
+      const py1 = Math.min(view.y + img.height - 1, Math.ceil((box.y + box.h * y1) * view.height));
       if (px1 <= px0 || py1 <= py0) continue;
       const step = Math.max(1, Math.floor(Math.min(px1 - px0, py1 - py0) / 10));
       for (let y = py0; y <= py1; y += step)
         for (let x = px0; x <= px1; x += step) {
-          const k = (y * img.width + x) * 4;
+          const k = ((y - view.y) * img.width + (x - view.x)) * 4;
           const R = img.data[k];
           const G = img.data[k + 1];
           const B = img.data[k + 2];
           const b = bin(R, G, B);
           all.push(b);
           if (background) {
-            const bx = Math.min(background.width - 1, Math.floor((x * background.width) / img.width));
-            const by = Math.min(background.height - 1, Math.floor((y * background.height) / img.height));
+            const bx = Math.min(background.width - 1, Math.floor((x * background.width) / view.width));
+            const by = Math.min(background.height - 1, Math.floor((y * background.height) / view.height));
             const q = (by * background.width + bx) * 4;
             if (Math.abs(R - background.data[q]) + Math.abs(G - background.data[q + 1]) + Math.abs(B - background.data[q + 2]) < 48) continue;
           }
@@ -102,42 +105,45 @@ export function signature(img: ImageData, box: Box, background: Background | nul
     if (!used.length || (r === 3 && background && person.length < all.length * 0.1)) return;
     const offset = r * BINS;
     for (const b of used) out[offset + b]++;
-    for (let i = 0; i < BINS; i++) out[offset + i] = Math.round((out[offset + i] / used.length) * 1000) / 1000;
+    for (let i = 0; i < BINS; i++) out[offset + i] = Math.round((out[offset + i] / used.length) * 255);
   });
   return out;
 }
 
-/** 0 = looks the same, 1 = nothing in common. */
-export function sigDistance(a: number[], b: number[]) {
-  if (!a.length || a.length !== b.length || a.length % BINS) return 0.35;
-  const weights = a.length === SIGNATURE_LENGTH ? REGIONS.map((r) => r.weight) : (OLDER_WEIGHTS[a.length] ?? new Array<number>(a.length / BINS).fill(1));
+/** 0 = looks the same, 1 = nothing in common. Each body part is compared as shares (any scale of counts works). */
+export function sigDistance(a: ArrayLike<number>, b: ArrayLike<number>) {
+  if (!a.length || a.length !== SIGNATURE_LENGTH || b.length !== SIGNATURE_LENGTH) return 0.35;
   let total = 0;
   let used = 0;
-  weights.forEach((w, r) => {
+  REGIONS.forEach(({ weight }, r) => {
     let sa = 0;
     let sb = 0;
-    let d = 0;
     for (let i = r * BINS; i < (r + 1) * BINS; i++) {
       sa += a[i];
       sb += b[i];
-      d += Math.abs(a[i] - b[i]);
     }
-    if (sa < 0.5 || sb < 0.5) return;
-    total += (w * d) / 2;
-    used += w;
+    if (sa <= 0 || sb <= 0) return;
+    let d = 0;
+    for (let i = r * BINS; i < (r + 1) * BINS; i++) d += Math.abs(a[i] / sa - b[i] / sb);
+    total += (weight * d) / 2;
+    used += weight;
   });
   return used ? total / used : 0.35;
 }
 
-/** Average look, each look counted `weights[i]` times. */
-export function meanSignature(sigs: number[][], weights?: number[]) {
-  const length = sigs.find((s) => s.length)?.length ?? SIGNATURE_LENGTH;
-  const out = new Array<number>(length).fill(0);
+/** Average look (shares per body part), each look counted `weights[i]` times. */
+export function meanSignature(sigs: ArrayLike<number>[], weights?: number[]) {
+  const out = new Array<number>(SIGNATURE_LENGTH).fill(0);
   let total = 0;
   sigs.forEach((s, k) => {
-    if (s.length !== length) return;
+    if (s.length !== SIGNATURE_LENGTH) return;
     const w = weights?.[k] ?? 1;
-    for (let i = 0; i < length; i++) out[i] += s[i] * w;
+    for (let r = 0; r < REGIONS.length; r++) {
+      let sum = 0;
+      for (let i = r * BINS; i < (r + 1) * BINS; i++) sum += s[i];
+      if (sum <= 0) continue;
+      for (let i = r * BINS; i < (r + 1) * BINS; i++) out[i] += (s[i] / sum) * w;
+    }
     total += w;
   });
   return total ? out.map((v) => v / total) : out;

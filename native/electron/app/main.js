@@ -56,18 +56,21 @@ function createWindow(route = '') {
     if ((input.control || input.meta) && ['+', '-', '=', '0'].includes(input.key)) event.preventDefault();
   });
 
-  // app screens open in new app windows, web links in the browser
+  // app screens open in new app windows, web links in the browser (only web links: never file:, smb:, ms-*:…)
+  const openOutside = (url) => {
+    if (/^(https?|mailto):/i.test(url)) shell.openExternal(url);
+  };
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith(ORIGIN)) {
       return { action: 'allow', overrideBrowserWindowOptions: { width: 1200, height: 820, backgroundColor: '#0c0c10', autoHideMenuBar: true } };
     }
-    shell.openExternal(url);
+    openOutside(url);
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (event, url) => {
     if (!url.startsWith(ORIGIN)) {
       event.preventDefault();
-      shell.openExternal(url);
+      openOutside(url);
     }
   });
 
@@ -126,9 +129,14 @@ let mainWindow = null;
 
 app.whenReady().then(() => {
   protocol.handle('app', (request) => {
-    const { pathname } = new URL(request.url);
-    let file = path.normalize(path.join(WEB, decodeURIComponent(pathname)));
-    if (!file.startsWith(WEB)) return new Response('Accès refusé', { status: 403 });
+    let pathname;
+    try {
+      pathname = decodeURIComponent(new URL(request.url).pathname);
+    } catch {
+      return new Response('Adresse invalide', { status: 400 });
+    }
+    let file = path.normalize(path.join(WEB, pathname));
+    if (file !== WEB && !file.startsWith(WEB + path.sep)) return new Response('Accès refusé', { status: 403 });
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(WEB, 'index.html');
     return net.fetch(pathToFileURL(file).toString());
   });

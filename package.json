@@ -5,19 +5,17 @@
   "type": "module",
   "description": "Lineup - createur de formations de danse K-pop synchronisees avec la musique",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "dev:web": "vite",
-    "dev:server": "node --watch server/index.js",
+    "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "start": "node server/index.js",
-    "lan": "HOST=0.0.0.0 node server/index.js",
     "typecheck": "tsc --noEmit",
     "deploy": "sh scripts/deploy-pages.sh",
     "build:desktop": "node scripts/build-desktop.mjs",
     "build:android": "node scripts/build-android.mjs",
     "release": "node scripts/release.mjs",
     "setup:cloud": "node scripts/setup-cloud.mjs",
-    "build:ios": "node scripts/build-ios.mjs"
+    "build:ios": "node scripts/build-ios.mjs",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:e2e": "node tests/e2e/run.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -39,7 +37,6 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "three": "^0.186.0",
-    "ws": "^8.21.3",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -52,8 +49,10 @@
     "@vitejs/plugin-react": "^6.1.1",
     "electron": "^44.3.0",
     "electron-builder": "^26.15.3",
+    "playwright-core": "^1.63.0",
     "png-to-ico": "^3.0.2",
     "resedit": "^3.1.0",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   }

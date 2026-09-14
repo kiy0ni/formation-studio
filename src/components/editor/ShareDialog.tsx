@@ -274,7 +274,7 @@ function LinkRow({ label, hint, url, icon }: { label: string; hint: string; url:
               await navigator.clipboard.writeText(url);
               notify('Lien copié');
             } catch {
-              prompt('Copiez ce lien :', url);
+              notify('Copie impossible : sélectionnez le lien ci-dessus');
             }
           }}
         >

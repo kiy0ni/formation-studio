@@ -499,6 +499,7 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
     : `Timings calés sur ${k} formation${k > 1 ? 's' : ''} (${holds.length} trouvée${holds.length > 1 ? 's' : ''} dans la vidéo, ${list.length} dans la choré)`;
 }
 
+/** The reviewed positions over time, in the colors of this choreography's dancers. */
 export function buildGhosts(an: Analysis, tracks: Placed[], mapping: (ID | null)[], dancers: Record<ID, Dancer>): Ghosts {
   return {
     hash: an.hash,

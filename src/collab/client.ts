@@ -289,6 +289,7 @@ export class CollabSession {
     } catch (e) {
       const msg = (e as Error).message;
       if (msg === 'Accès retiré') return void useCollab.setState({ status: 'error', error: 'Votre accès à cette chorégraphie a été retiré.' });
+      if (/invalide|expiré/i.test(msg)) return void useCollab.setState({ status: 'error', error: msg });
       return this.scheduleReconnect();
     }
     if (this.closed) return;

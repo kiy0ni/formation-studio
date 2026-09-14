@@ -6,41 +6,46 @@ import { initials, textOn } from '../lib/geometry';
 import { clampToStage, computeFrame, formatTime, sortedDancers, stageBounds } from '../lib/model';
 import type { ID } from '../lib/types';
 import { useEditor } from '../store/editor';
-import { loadAnalysis, PRECISION, saveAnalysis, type Analysis, type Precision, type Swap } from './analysis';
+import { loadAnalysis, loadApplied, PRECISION, saveApplied, type Analysis, type Precision, type ReviewSettings, type Swap } from './analysis';
 import { fitFloor } from './floor';
 import { alignToGrid, applyDetection, applySwaps, buildGhosts, DEFAULT_PLACEMENT, defaultMapping, findFormations, placeTracks, positionsOver, type ApplyMode, type Placement } from './formations';
 import { cancelAnalysis, startAnalysis, useDetect } from './store';
-import { thumbFor, trackPeople } from './track';
+import { crops, thumbFor, trackPeople } from './track';
+
+const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 export function DetectDialog({ onClose }: { onClose: () => void }) {
+  const choreoId = useEditor((s) => s.doc?.id ?? '');
   const video = useEditor((s) => s.doc?.video ?? null);
   const hash = video?.hash ?? '';
   const job = useDetect((s) => (s.job?.hash === hash ? s.job : null));
   const running = !!job;
-  const error = useDetect((s) => s.error);
-  const [analysis, setAnalysis] = useState<Analysis | null | undefined>(undefined);
+  const error = useDetect((s) => (s.error?.hash === hash ? s.error.text : ''));
+  const [loaded, setLoaded] = useState<{ analysis: Analysis | null; saved: ReviewSettings | null } | null>(null);
   const [again, setAgain] = useState(false);
+  const [precision, setPrecision] = useState<Precision>('precise');
 
+  // loaded again when an analysis ends (the window can stay open meanwhile)
   useEffect(() => {
-    if (running || !hash) return;
+    if (!hash) return;
     let alive = true;
-    void loadAnalysis(hash).then((a) => {
+    void Promise.all([loadAnalysis(hash), loadApplied(hash, choreoId)]).then(([analysis, applied]) => {
       if (!alive) return;
-      setAnalysis(a);
+      setLoaded({ analysis, saved: applied?.review ?? null });
       setAgain(false);
     });
     return () => {
       alive = false;
     };
-  }, [hash, running]);
+  }, [hash, choreoId, running]);
 
-  const [precision, setPrecision] = useState<Precision>('precise');
   if (!video) return null;
+  const analysis = loaded?.analysis ?? null;
   const intro = !analysis || again || running;
 
   return (
     <Modal title="Détection automatique" onClose={onClose} width={intro ? 480 : 900}>
-      {analysis === undefined ? (
+      {!loaded ? (
         <div className="detect-loading">
           <div className="spinner" />
         </div>
@@ -100,7 +105,7 @@ export function DetectDialog({ onClose }: { onClose: () => void }) {
           {error && <p className="error-text">{error}</p>}
         </div>
       ) : (
-        <Review key={analysis.createdAt} analysis={analysis} onClose={onClose} onAgain={() => setAgain(true)} />
+        <Review key={analysis.createdAt} analysis={analysis} saved={loaded.saved} onClose={onClose} onAgain={() => setAgain(true)} />
       )}
     </Modal>
   );
@@ -122,11 +127,26 @@ const MODE_HINT: Record<ApplyMode, string> = {
   timings: 'Garde vos positions, cale la durée de chaque formation sur la vidéo.',
 };
 
-function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: () => void; onAgain: () => void }) {
+/** A picture cut out of an analysis thumbnail. */
+function Crop({ url, box, width, height, className }: { url: string; box: { x: number; y: number; w: number; h: number }; width: number; height: number; className: string }) {
+  return (
+    <span
+      className={className}
+      style={{
+        backgroundImage: `url(${url})`,
+        aspectRatio: `${box.w * width} / ${box.h * height}`,
+        backgroundSize: `${100 / box.w}% ${100 / box.h}%`,
+        backgroundPosition: `${box.w < 1 ? (box.x / (1 - box.w)) * 100 : 0}% ${box.h < 1 ? (box.y / (1 - box.h)) * 100 : 0}%`,
+      }}
+    />
+  );
+}
+
+function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; saved: ReviewSettings | null; onClose: () => void; onAgain: () => void }) {
   const doc = useEditor((s) => s.doc!);
   const video = doc.video!;
   const dancers = sortedDancers(doc);
-  const saved = analysis.review;
+  const { stage } = doc;
 
   const floor = useMemo(() => fitFloor(analysis.frames.flat(), analysis.width, analysis.height), [analysis]);
   const [people, setPeopleValue] = useState(saved?.people ?? 0);
@@ -135,8 +155,8 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
   const tracks = useMemo(() => applySwaps(tracking.tracks, swaps), [tracking, swaps]);
   const [placement, setPlacement] = useState<Placement>(saved?.placement ?? DEFAULT_PLACEMENT);
   // formations come from the tracking before any exchange: exchanging two people changes who, not when
-  const unswapped = useMemo(() => placeTracks(tracking.tracks, doc.stage, placement), [tracking, doc.stage, placement]);
-  const placed = useMemo(() => (swaps.length ? placeTracks(tracks, doc.stage, placement) : unswapped), [swaps.length, tracks, doc.stage, placement, unswapped]);
+  const unswapped = useMemo(() => placeTracks(tracking.tracks, stage, placement), [tracking, stage, placement]);
+  const placed = useMemo(() => (swaps.length ? placeTracks(tracks, stage, placement) : unswapped), [swaps.length, tracks, stage, placement, unswapped]);
   const [sensitivity, setSensitivity] = useState(saved?.sensitivity ?? 0.5);
   const found = useMemo(() => findFormations(unswapped.tracks, analysis.times, analysis.fps, sensitivity), [unswapped, analysis, sensitivity]);
   const formations = useMemo(() => (placed === unswapped ? found : found.map((f) => ({ ...f, positions: positionsOver(placed.tracks, f.ranges) }))), [found, placed, unswapped]);
@@ -147,36 +167,40 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
   const [mode, setMode] = useState<ApplyMode>(saved?.mode ?? 'all');
   const [snap, setSnap] = useState(saved?.snap ?? true);
   const [recenter, setRecenter] = useState(saved?.recenter ?? true);
-  const [grid, setGrid] = useState(saved?.grid ?? doc.stage.snap);
+  const [grid, setGrid] = useState(saved?.grid ?? stage.snap);
   const [paths, setPaths] = useState(saved?.paths ?? true);
+  const [checking, setChecking] = useState(false);
 
+  // who dances who: the saved choice when it still fits, else left to right; reset when the number of people changes
   const count = placed.tracks.length;
-  const [mapping, setMapping] = useState<(ID | null)[]>(() =>
-    saved && saved.mapping.length === count && saved.mapping.every((id) => !id || doc.dancers[id]) ? saved.mapping : [],
-  );
-  useEffect(() => {
-    if (mapping.length === count) return;
+  const defaults = useMemo(() => {
     const first = formations[0];
     const at = computeFrame(doc, Math.max(0, (first?.start ?? 0) - video.offset));
     const positions = first?.positions ?? placed.tracks.map((t) => ({ x: t.xs[0], y: t.ys[0] }));
-    setMapping(defaultMapping(positions, dancers.map((d) => ({ id: d.id, x: at.dancers[d.id]?.x ?? 0 }))));
+    return defaultMapping(positions, dancers.map((d) => ({ id: d.id, x: at.dancers[d.id]?.x ?? 0 })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
+  }, [count, tracking]);
+  const [chosen, setChosen] = useState<{ count: number; mapping: (ID | null)[] } | null>(() =>
+    saved && saved.mapping.length === count && saved.mapping.every((id) => !id || doc.dancers[id]) ? { count, mapping: saved.mapping } : null,
+  );
+  const mapping = chosen && chosen.count === count ? chosen.mapping : defaults;
 
   const thumbs = useMemo(() => tracks.map((t) => thumbFor(analysis, t)), [analysis, tracks]);
+  const strips = useMemo(() => (checking ? tracks.map((t) => crops(analysis, t, 6)) : []), [analysis, tracks, checking]);
+  const unsure = tracking.confidence.map((c) => c < 0.5);
 
   const setPeople = (value: number) => {
     setPeopleValue(value);
     setSwaps([]);
     setPicked([]);
-    setMapping([]);
+    setChosen(null);
   };
   const choose = (k: number, id: ID | null) => {
     const next = [...mapping];
     const other = id ? next.indexOf(id) : -1;
     if (other >= 0 && other !== k) next[other] = next[k] ?? null;
     next[k] = id;
-    setMapping(next);
+    setChosen({ count, mapping: next });
   };
   const pick = (k: number) => setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k].slice(-2)));
   const swapFromHere = () => {
@@ -187,10 +211,10 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
   };
 
   const frameUrl = useMemo(() => {
-    if (!current || !analysis.keyframes.length) return null;
+    if (!current || !analysis.thumbs.length) return null;
     const mid = (current.start + current.end) / 2;
-    let best = analysis.keyframes[0];
-    for (const kf of analysis.keyframes) if (Math.abs(analysis.times[kf.index] - mid) < Math.abs(analysis.times[best.index] - mid)) best = kf;
+    let best = analysis.thumbs[0];
+    for (const th of analysis.thumbs) if (Math.abs(analysis.times[th.index] - mid) < Math.abs(analysis.times[best.index] - mid)) best = th;
     return best.url;
   }, [current, analysis]);
 
@@ -201,13 +225,13 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
       message = applyDetection(d, before, { mode, formations, tracks: placed.tracks, times: analysis.times, mapping, recenter, snap, grid, paths });
     });
     const ghosts = buildGhosts(analysis, placed.tracks, mapping, before.dancers);
-    void saveAnalysis({ ...analysis, ghosts, review: { people, swaps, placement, sensitivity, mapping, mode, snap, recenter, grid, paths, transform: placed.transform } });
-    useDetect.setState({ ghosts });
+    const review: ReviewSettings = { people, swaps, placement, sensitivity, mapping, mode, snap, recenter, grid, paths, transform: placed.transform };
+    void saveApplied(analysis.hash, before.id, { review, ghosts });
+    useDetect.setState({ ghosts: { choreoId: before.id, data: ghosts } });
     notify(`${message} · Annuler pour revenir en arrière`);
     onClose();
   };
 
-  const { stage } = doc;
   const b = stageBounds(stage);
   const size = stage.dancerSize;
   const mapped = mapping.filter(Boolean).length;
@@ -225,15 +249,29 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
     return out;
   }, [stage]);
 
+  if (!count) {
+    return (
+      <div className="detect-intro">
+        <p>Aucun danseur n’a été reconnu dans cette vidéo. La détection marche avec une caméra fixe et des danseurs vus en entier, de face.</p>
+        <div className="detect-foot">
+          <button className="btn ghost small" onClick={onAgain}>
+            Relancer l’analyse
+          </button>
+          <span className="grow" />
+          <button className="btn" onClick={onClose}>
+            Fermer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="detect-review">
         <div className="detect-col">
           <div className="detect-summary">
-            <b>
-              {formations.length} formation{formations.length > 1 ? 's' : ''}
-            </b>{' '}
-            · {count} personne{count > 1 ? 's' : ''} suivie{count > 1 ? 's' : ''}
+            <b>{plural(formations.length, 'formation')}</b> · {plural(count, 'personne')} suivie{count > 1 ? 's' : ''}
           </div>
           <div className="detect-chips" role="tablist">
             {formations.map((f, i) => (
@@ -314,26 +352,24 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
           <Toggle checked={grid} onChange={setGrid} label="Aligner sur les repères de la scène" />
           {doc.music.bpm ? <Toggle checked={snap} onChange={setSnap} label="Caler sur les temps de la musique" /> : null}
 
-          <h4>Qui danse qui</h4>
+          <div className="detect-subhead">
+            <h4>Qui danse qui</h4>
+            <button className="btn small ghost" onClick={() => setChecking(!checking)} aria-pressed={checking}>
+              <Icon name="eye" size={14} /> {checking ? 'Masquer les images' : 'Vérifier'}
+            </button>
+          </div>
+          {unsure.some(Boolean) && !checking && (
+            <span className="hint">
+              <Icon name="warning" size={13} /> Des personnes se ressemblent : touchez « Vérifier » pour voir chacune à plusieurs moments.
+            </span>
+          )}
           <div className="detect-people">
             {placed.tracks.map((_, k) => {
               const t = thumbs[k];
               const d = mapping[k] ? doc.dancers[mapping[k]!] : null;
               return (
-                <div className="detect-person" key={k}>
-                  {t ? (
-                    <span
-                      className="detect-thumb"
-                      style={{
-                        backgroundImage: `url(${t.url})`,
-                        aspectRatio: `${t.box.w * analysis.width} / ${t.box.h * analysis.height}`,
-                        backgroundSize: `${100 / t.box.w}% ${100 / t.box.h}%`,
-                        backgroundPosition: `${t.box.w < 1 ? (t.box.x / (1 - t.box.w)) * 100 : 0}% ${t.box.h < 1 ? (t.box.y / (1 - t.box.h)) * 100 : 0}%`,
-                      }}
-                    />
-                  ) : (
-                    <span className="detect-thumb empty" />
-                  )}
+                <div className={`detect-person ${unsure[k] ? 'unsure' : ''}`} key={k}>
+                  {t ? <Crop url={t.url} box={t.box} width={analysis.width} height={analysis.height} className="detect-thumb" /> : <span className="detect-thumb empty" />}
                   <span className="detect-tag" style={{ background: d?.color ?? '#55555f', color: textOn(d?.color ?? '#55555f') }}>
                     P{k + 1}
                   </span>
@@ -345,10 +381,22 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
                       </option>
                     ))}
                   </select>
+                  {unsure[k] && <span className="detect-unsure">À vérifier</span>}
+                  {checking && strips[k] && (
+                    <div className="detect-strip">
+                      {strips[k].map((c, i) => (
+                        <span key={i} className="detect-strip-item">
+                          <Crop url={c.url} box={c.box} width={analysis.width} height={analysis.height} className="detect-thumb small" />
+                          <small>{formatTime(Math.max(0, c.time - video.offset), false)}</small>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
+          {checking && <span className="hint">Chaque ligne doit montrer la même personne. Sinon : touchez deux personnes sur la scène pour les échanger à partir d’une formation.</span>}
           {mapped > 0 && mapped < count && <Toggle checked={recenter} onChange={setRecenter} label="Recentrer les danseurs gardés" />}
 
           <h4>Appliquer</h4>
@@ -373,7 +421,7 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
         <button className="btn" onClick={onClose}>
           Fermer
         </button>
-        <button className="btn primary" disabled={!formations.length || mapping.length !== count || (!mapped && mode !== 'timings')} onClick={apply}>
+        <button className="btn primary" disabled={!formations.length || (!mapped && mode !== 'timings')} onClick={apply}>
           Appliquer
         </button>
       </div>

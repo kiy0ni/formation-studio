@@ -790,10 +790,15 @@ function MusicPanel() {
               disabled={busy}
               onClick={async () => {
                 setBusy(true);
-                const res = await redetectBpm(music.hash!);
-                setBusy(false);
-                if (res) update('Tempo', (d) => void Object.assign(d.music, { bpm: res.bpm, beatOffset: res.offset }));
-                notify(res ? `${res.bpm} BPM` : 'Tempo non détecté');
+                try {
+                  const res = await redetectBpm(music.hash!);
+                  if (res) update('Tempo', (d) => void Object.assign(d.music, { bpm: res.bpm, beatOffset: res.offset }));
+                  notify(res ? `${res.bpm} BPM` : 'Tempo non détecté');
+                } catch {
+                  notify('Tempo non détecté');
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
               <Icon name="wave" size={14} /> Détecter
@@ -835,7 +840,7 @@ function MusicPanel() {
       )}
 
       <Collapsible id="music-playback" icon="play" title="Répétition">
-        <Segmented value={String(rate)} onChange={(v) => playback.setRate(Number(v))} options={['0.5', '0.75', '1', '1.25'].map((v) => ({ value: v, label: `${v.replace('.', ',')}×` }))} />
+        <Segmented value={String(rate)} onChange={(v) => playback.setRate(Number(v))} options={['0.25', '0.5', '0.75', '1', '1.25'].map((v) => ({ value: v, label: `${v.replace('.', ',')}×` }))} />
         {music.bpm ? <Toggle checked={metronome} onChange={(v) => useEditor.setState({ metronome: v })} label="Métronome" /> : null}
       </Collapsible>
     </>
@@ -936,7 +941,7 @@ function MorePanel() {
         {toggle('tag', 'Noms', showNames, (v) => set({ showNames: v }))}
       </div>
       <div className="more-group">
-        {row('video', 'Vidéo', () => set({ dialog: 'video', sheetOpen: false }))}
+        {row('video', 'Exporter en vidéo', () => set({ dialog: 'video', sheetOpen: false }))}
         {row('print', 'PDF', () => openRoute(`/print/${doc.id}`, true))}
         {row('image', 'Image', () => (set({ sheetOpen: false }), exportPng()))}
         {row('users', 'Partager en direct', () => set({ dialog: 'share', sheetOpen: false }), doc.collab ? 'Activé' : undefined)}

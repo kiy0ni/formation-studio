@@ -17,6 +17,8 @@ export interface Tracking {
   people: number;
   suggested: number;
   tracks: Track[];
+  /** Per person: how surely the app tells them apart from the others (0..1; below ~0.5: worth checking). */
+  confidence: number[];
 }
 
 /** A stretch where we are sure it is the same person (nobody else close). */
@@ -86,10 +88,20 @@ export function trackPeople(an: Analysis, floor: FloorModel, people?: number): T
   const fps = an.fps;
   const suggested = suggestedPeople(an);
   const target = Math.max(1, Math.round(people || suggested));
+  const cached = cache.get(an);
+  if (cached?.target === target) return cached.tracking;
 
-  const pieces = buildPieces(an, floor);
+  const pieces = cached?.pieces ?? buildPieces(an, floor);
   const persons = groupPieces(pieces, n, fps, target);
   refine(persons, fps);
+  // a person is sure when their look is far from everyone else's and their stretches agree with each other
+  const confidence = persons.map((person, k) => {
+    const others = persons.filter((_, j) => j !== k);
+    const apart = others.length ? Math.min(...others.map((o) => sigDistance(person.sig, o.sig))) : 1;
+    const own = person.pieces.filter((p) => p.weight > 0);
+    const spread = own.length ? own.reduce((sum, p) => sum + sigDistance(person.sig, p.sig) * p.weight, 0) / own.reduce((sum, p) => sum + p.weight, 0) : 0.3;
+    return Math.max(0, Math.min(1, (apart - spread * 0.5) / 0.25));
+  });
 
   const out: Track[] = persons.map((person) => {
     const xs = new Array<number>(n).fill(NaN);
@@ -104,9 +116,14 @@ export function trackPeople(an: Analysis, floor: FloorModel, people?: number): T
       });
     return { xs: smooth(fill(xs)), ys: smooth(fill(ys)), seen: Uint8Array.from(det, (v) => (v >= 0 ? 1 : 0)), det, sig: person.sig };
   });
-  out.sort((a, b) => median(a.xs) - median(b.xs));
-  return { people: target, suggested, tracks: out };
+  const order = out.map((t, k) => ({ t, k, x: median(t.xs) })).sort((a, b) => a.x - b.x);
+  const tracking = { people: target, suggested, tracks: order.map((o) => o.t), confidence: order.map((o) => confidence[o.k]) };
+  cache.set(an, { target, pieces, tracking });
+  return tracking;
 }
+
+/** The last tracking of each analysis (the review changes "people", "Place from the image" needs the same placement). */
+const cache = new WeakMap<Analysis, { target: number; pieces: Piece[]; tracking: Tracking }>();
 
 /* ------------------------------------------------------------------------ */
 
@@ -266,29 +283,43 @@ export interface GroupTuning {
   motion: number;
   height: number;
   leaveOut: number;
+  /** Starting moments tried (the sorting with the lowest total cost wins). */
+  starts: number;
 }
-/** Chosen on a hand-labelled dance practice (6 dancers, 4 dressed in black): 95 % of people right at 5 images/s. */
-const GROUP_TUNING: GroupTuning = { motion: 0, height: 0.25, leaveOut: 0.55 };
+/** Chosen on a hand-labelled dance practice (6 dancers, 4 dressed in black), robust over several analyses of it. */
+const GROUP_TUNING: GroupTuning = { motion: 0.1, height: 0.1, leaveOut: 0.55, starts: 20 };
 
 function groupPieces(pieces: Piece[], n: number, fps: number, target: number, tuning: GroupTuning = GROUP_TUNING): Person[] {
   const usable = pieces.filter((p) => len(p) >= 2 && p.weight > 0).sort((a, b) => len(b) - len(a));
   const long = usable.filter((p) => len(p) >= fps);
   // starting looks: moments when the most people are seen for a long time, all at once (surely different people)
-  const starts: { pieces: Piece[]; score: number }[] = [];
-  for (let i = 0; i < n; i++) {
-    const here = long.filter((p) => first(p) <= i && last(p) >= i).slice(0, target);
-    if (!here.length) continue;
-    const score = here.length * 10000 + len(here[here.length - 1]);
-    const key = here.map((p) => pieces.indexOf(p)).sort((x, y) => x - y).join(',');
-    const same = starts.find((st) => st.pieces.map((p) => pieces.indexOf(p)).sort((x, y) => x - y).join(',') === key);
-    if (same) same.score = Math.max(same.score, score);
-    else starts.push({ pieces: here, score });
+  const index = new Map(pieces.map((p, k) => [p, k]));
+  const keyOf = (list: Piece[]) => list.map((p) => index.get(p)!).sort((x, y) => x - y).join(',');
+  const starts = new Map<string, { pieces: Piece[]; score: number }>();
+  // long stretches covering each image, found by sweeping once
+  const openAt: Piece[][] = Array.from({ length: n + 1 }, () => []);
+  const closeAt: Piece[][] = Array.from({ length: n + 1 }, () => []);
+  for (const p of long) {
+    openAt[first(p)].push(p);
+    closeAt[last(p) + 1].push(p);
   }
-  starts.sort((x, y) => y.score - x.score);
+  let here = new Set<Piece>();
+  for (let i = 0; i < n; i++) {
+    for (const p of closeAt[i]) here.delete(p);
+    for (const p of openAt[i]) here.add(p);
+    if (!here.size) continue;
+    const list = [...here].sort((a, b) => len(b) - len(a)).slice(0, target);
+    const score = list.length * 10000 + len(list[list.length - 1]);
+    const key = keyOf(list);
+    const same = starts.get(key);
+    if (same) same.score = Math.max(same.score, score);
+    else starts.set(key, { pieces: list, score });
+  }
+  const ranked = [...starts.values()].sort((x, y) => y.score - x.score);
 
   let best: { persons: Person[]; cost: number } | null = null;
   // a few different starting moments: keep the sorting where everyone looks most like themselves
-  for (const start of starts.slice(0, 6)) {
+  for (const start of ranked.slice(0, tuning.starts)) {
     let centers = start.pieces.map((p) => ({ sig: p.sig, rh: p.rh }));
     for (const p of long) {
       if (centers.length >= target) break;
@@ -327,7 +358,7 @@ function groupPieces(pieces: Piece[], n: number, fps: number, target: number, tu
         summarize(person);
         return person;
       });
-      const key = lists.map((list) => list.map((p) => pieces.indexOf(p)).sort((x, y) => x - y).join(',')).join('|');
+      const key = lists.map(keyOf).join('|');
       if (key === previous) break;
       previous = key;
       centers = persons.map((person, k) => (person.pieces.length ? { sig: person.sig, rh: person.rh } : centers[k]));
@@ -465,7 +496,7 @@ function smooth(values: Float32Array): Float32Array {
 export function thumbFor(an: Analysis, track: Track) {
   let best: { url: string; box: { x: number; y: number; w: number; h: number } } | null = null;
   let bestScore = 0;
-  for (const kf of an.keyframes) {
+  for (const kf of an.thumbs) {
     const k = track.det[kf.index];
     if (k < 0) continue;
     const frame = an.frames[kf.index];
@@ -487,9 +518,9 @@ export function thumbFor(an: Analysis, track: Track) {
   return best;
 }
 
-/** Pictures of a person through the video (checking the tracking). */
+/** Pictures of a person through the video (checking who is who). */
 export function crops(an: Analysis, track: Track, count: number) {
-  const seen = an.keyframes.filter((kf) => track.det[kf.index] >= 0);
+  const seen = an.thumbs.filter((kf) => track.det[kf.index] >= 0);
   const step = Math.max(1, seen.length / count);
   const out: { url: string; time: number; box: Det }[] = [];
   for (let i = 0; i < seen.length && out.length < count; i += step) {

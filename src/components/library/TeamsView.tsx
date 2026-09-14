@@ -63,6 +63,8 @@ export function TeamsView({ query, onCreateChoreo }: { query: string; onCreateCh
                 </button>
                 <button
                   className="btn small ghost danger"
+                  aria-label={`Supprimer l’équipe ${t.name}`}
+                  title="Supprimer"
                   onClick={async () => {
                     if (!confirm(`Supprimer l’équipe « ${t.name} » ?`)) return;
                     await db.deleteTeam(t.id);
