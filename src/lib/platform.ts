@@ -9,8 +9,8 @@ export const IS_IOS_APP = Capacitor.isNativePlatform() && Capacitor.getPlatform(
 /** Phone apps (Android, iPhone): files go through the share sheet, printing through the system service. */
 export const IS_PHONE_APP = Capacitor.isNativePlatform();
 export const IS_NATIVE_APP = IS_ELECTRON || Capacitor.isNativePlatform();
-/** Phones apps have a single screen: no extra windows. */
-export const CAN_OPEN_WINDOWS = !Capacitor.isNativePlatform();
+/** Phones and tablets (apps or browser) have a single screen: no extra windows. */
+export const CAN_OPEN_WINDOWS = !Capacitor.isNativePlatform() && !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
 
 export const APP_VERSION: string = __APP_VERSION__;
 

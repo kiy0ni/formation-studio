@@ -158,6 +158,12 @@ export async function deleteAccount(password: string) {
     if (removed.error) throw new Error(removed.error.message);
     if (data.length < 100) break;
   }
+  // music of the choreographies this person shared (the rooms themselves go with the account)
+  const owned = await sb.from('room_members').select('room_id').eq('user_id', user.id).eq('role', 'owner');
+  for (const { room_id } of (owned.data ?? []) as { room_id: string }[]) {
+    const files = await sb.storage.from('room-audio').list(room_id, { limit: 100 });
+    if (files.data?.length) await sb.storage.from('room-audio').remove(files.data.map((f) => `${room_id}/${f.name}`));
+  }
   const { error } = await sb.rpc('delete_my_account');
   if (error) throw new Error(error.message);
   await sb.auth.signOut({ scope: 'local' });

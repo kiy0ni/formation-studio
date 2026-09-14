@@ -329,4 +329,8 @@ create policy "room audio update" on storage.objects
   for update to authenticated
   using (bucket_id = 'room-audio' and public.room_role(public.safe_uuid((storage.foldername(name))[1])) in ('owner', 'edit'));
 
+drop policy if exists "room audio delete" on storage.objects;
+create policy "room audio delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'room-audio' and public.room_role(public.safe_uuid((storage.foldername(name))[1])) = 'owner');
 notify pgrst, 'reload schema';

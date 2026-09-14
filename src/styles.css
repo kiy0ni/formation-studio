@@ -4780,3 +4780,112 @@ input[type='checkbox'].switch {
   align-items: center;
   gap: 8px;
 }
+
+/* phone: template and team cards carry several buttons, give them the full width */
+@media (max-width: 860px) {
+  .cards.discover,
+  .cards.teams {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .discover .card-body .row,
+  .team-card .card-body .row {
+    flex-wrap: wrap;
+  }
+  .discover .card-body .row .btn,
+  .team-card .card-body .row .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 40px;
+  }
+}
+
+/* phone: every control big enough for a finger */
+@media (max-width: 860px) {
+  .segmented button {
+    min-height: 38px;
+    padding-inline: 12px;
+    font-size: 13px;
+  }
+  .chip:not(.small) {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 13px;
+  }
+  .swatch {
+    width: 32px;
+    height: 32px;
+  }
+  .swatches {
+    gap: 10px;
+  }
+  .color-dot {
+    min-width: 32px;
+    min-height: 32px;
+  }
+  .link-btn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 6px;
+  }
+  .dancer-actions .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .btn.small {
+    min-height: 36px;
+  }
+  .install-details summary {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+  .count-picker button {
+    min-height: 36px;
+    min-width: 36px;
+  }
+  .selbar .selbar-close {
+    align-self: stretch;
+  }
+  .tour-actions .link-btn {
+    min-width: 56px;
+  }
+}
+/* the guide window already has its title */
+.modal .guide-hero {
+  display: none;
+}
+
+/* phone: print sheet toolbar wraps instead of widening the page */
+@media (max-width: 860px) {
+  .print-page {
+    overflow-x: hidden;
+  }
+  .print-toolbar {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+  .print-toolbar .grow {
+    display: none;
+  }
+  .print-toolbar .btn.primary {
+    flex: 1 1 100%;
+    justify-content: center;
+    white-space: normal;
+  }
+  .print-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .print-sheet-body {
+    overflow-x: auto;
+  }
+}
+
+/* tablets: two template / team cards per row, still wide enough for their buttons */
+@media (min-width: 600px) and (max-width: 860px) {
+  .cards.discover,
+  .cards.teams {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
