@@ -17,6 +17,7 @@ git init -q -b gh-pages
 git add -A
 git commit -q -m "Déploiement $(date '+%Y-%m-%d %H:%M')"
 git push -f -q "$REMOTE" gh-pages
+cd "$ROOT"
 rm -rf "$TMP"
 
 # Old address (/formation-studio/, before the repo was renamed), served by the user site kiy0ni.github.io:
