@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && vite build",
     "start": "node server/index.js",
     "lan": "HOST=0.0.0.0 node server/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy": "sh scripts/deploy-pages.sh"
   },
   "engines": {
     "node": ">=20"

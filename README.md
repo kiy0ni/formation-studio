@@ -15,7 +15,9 @@ Le bouton « Installer l'app » de la bibliothèque rappelle ces étapes. Une fo
 
 Les chorégraphies sont enregistrées **sur l'appareil**. Pour les transférer (ex. Mac → Android) : bibliothèque → *Données* → *Sauvegarder toute la bibliothèque*, puis sur l'autre appareil *Données* → *Importer*.
 
-La version en ligne n'inclut pas la collaboration en temps réel (elle nécessite le serveur Node ci-dessous). Chaque push sur `main` redéploie automatiquement le site (GitHub Actions).
+La version en ligne n'inclut pas la collaboration en temps réel (elle nécessite le serveur Node ci-dessous).
+
+**Mettre à jour le site** : `npm run deploy` (construit l'app et la publie sur la branche `gh-pages`). Les apps déjà installées récupèrent la nouvelle version au prochain lancement avec internet.
 
 ## Démarrage (développement)
 
