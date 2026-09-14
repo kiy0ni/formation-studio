@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { Icon, type IconName } from './common/Icon';
+import { AUTO_DETECT_ENABLED } from '../lib/config';
 
 interface GuideSection {
   id: string;
@@ -102,6 +103,11 @@ const SECTIONS: GuideSection[] = [
         <li>
           <B>Vidéo de référence</B> (Plus → Vidéo de référence) : la dance practice défile avec la musique. Glissez-la dans un coin, touchez-la pour l’agrandir. Miroir et décalage dans ses réglages.
         </li>
+        {AUTO_DETECT_ENABLED && (
+          <li>
+            <B>Détection automatique</B> (bêta, réglages de la vidéo) : l’app repère les danseurs et propose formations et timings, à relire avant d’appliquer. <B>Placer depuis l’image</B> place la formation affichée.
+          </li>
+        )}
       </ul>
     ),
   },
