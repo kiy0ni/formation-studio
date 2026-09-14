@@ -1122,7 +1122,7 @@ kbd {
   /* pinned to the screen: the browser toolbar showing/hiding never shifts the editor */
   position: fixed;
   inset: 0;
-  height: var(--app-height, 100dvh);
+  height: 100dvh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
@@ -3450,7 +3450,7 @@ kbd {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(60px + env(safe-area-inset-bottom));
+    bottom: calc(60px + var(--safe-bottom));
     height: min(56vh, 520px);
     z-index: 45;
     border: 1px solid var(--border-strong);
@@ -3484,7 +3484,7 @@ kbd {
     grid-template-columns: repeat(5, 1fr);
     background: var(--surface);
     border-top: 1px solid var(--border);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--safe-bottom);
     position: relative;
     z-index: 46;
   }
@@ -3534,7 +3534,7 @@ kbd {
 }
 .library {
   background: var(--bg);
-  min-height: var(--app-height, 100dvh);
+  min-height: 100dvh;
 }
 .btn.primary,
 .btn.primary:hover:not(:disabled) {
@@ -3726,7 +3726,7 @@ kbd {
 }
 .flow {
   width: min(460px, 100vw);
-  height: min(760px, var(--app-height, 100dvh));
+  height: min(760px, 100dvh);
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 22px;
@@ -3786,7 +3786,7 @@ kbd {
   display: flex;
   flex-direction: column-reverse;
   gap: 8px;
-  padding: 12px 24px max(20px, env(safe-area-inset-bottom));
+  padding: 12px 24px max(20px, var(--safe-bottom));
 }
 .flow-foot .btn {
   width: 100%;
@@ -4305,7 +4305,7 @@ kbd {
     display: inline-flex !important;
   }
   .lib-content {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+    padding-bottom: calc(96px + var(--safe-bottom));
   }
   .lib-main.padded {
     padding: 8px 16px 16px;
@@ -4334,7 +4334,7 @@ kbd {
     background: rgba(12, 12, 16, 0.94);
     backdrop-filter: blur(12px);
     border-top: 1px solid var(--border);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--safe-bottom);
   }
   .tabbar button {
     display: flex;
@@ -4355,7 +4355,7 @@ kbd {
     display: flex;
     position: fixed;
     right: 18px;
-    bottom: calc(74px + env(safe-area-inset-bottom));
+    bottom: calc(74px + var(--safe-bottom));
     z-index: 41;
     width: 58px;
     height: 58px;
@@ -4374,7 +4374,7 @@ kbd {
   }
   .flow {
     width: 100vw;
-    height: var(--app-height, 100dvh);
+    height: 100dvh;
     border: 0;
     border-radius: 0;
   }
@@ -4440,7 +4440,7 @@ kbd {
     grid-template-columns: repeat(5, 1fr);
     background: var(--bg);
     border-top: 1px solid var(--border);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--safe-bottom);
     position: relative;
     z-index: 46;
   }
@@ -4460,7 +4460,7 @@ kbd {
     color: var(--accent);
   }
   .inspector {
-    bottom: calc(58px + env(safe-area-inset-bottom));
+    bottom: calc(58px + var(--safe-bottom));
     height: min(58dvh, 540px);
     background: var(--surface);
   }
@@ -4904,7 +4904,7 @@ input[type='checkbox'].switch {
   --p-num: #9b9ba7;
   background: var(--p-bg);
   color: var(--p-text);
-  min-height: var(--app-height, 100dvh);
+  min-height: 100dvh;
 }
 .print-toolbar {
   background: var(--p-bg);
@@ -4971,7 +4971,7 @@ input[type='checkbox'].switch {
   .library {
     position: fixed;
     inset: 0;
-    height: var(--app-height, 100dvh);
+    height: 100dvh;
     min-height: 0;
     overflow: hidden;
     display: flex;
@@ -4997,4 +4997,12 @@ input[type='checkbox'].switch {
   .fab {
     position: absolute;
   }
+}
+
+/* bottom safe area (home indicator); zero when the iPhone home-screen app view already stops above it */
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+html.webview-short {
+  --safe-bottom: 0px;
 }

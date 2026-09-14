@@ -1,7 +1,7 @@
 {
   "name": "formation-studio",
   "private": true,
-  "version": "1.5.3",
+  "version": "1.5.4",
   "type": "module",
   "description": "Lineup - createur de formations de danse K-pop synchronisees avec la musique",
   "scripts": {

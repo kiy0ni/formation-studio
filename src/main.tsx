@@ -28,13 +28,13 @@ document.addEventListener(
 
 startCloud();
 
-// iPhone home-screen app: the reported viewport leaves out the status bar and home indicator areas,
-// so full-screen layouts stopped short of the bottom. Size them to the real screen instead.
+// iPhone home-screen app: the web view can stop above the home indicator. Then the bottom bars
+// must not add the home-indicator margin on top of that (it lifted them), nor grow past the view (it cut them).
 if ((navigator as unknown as { standalone?: boolean }).standalone === true) {
   const fit = () => {
     const portrait = matchMedia('(orientation: portrait)').matches;
     const screenHeight = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
-    document.documentElement.style.setProperty('--app-height', `${Math.max(window.innerHeight, screenHeight)}px`);
+    document.documentElement.classList.toggle('webview-short', screenHeight - window.innerHeight > 24);
   };
   fit();
   window.addEventListener('resize', fit);
