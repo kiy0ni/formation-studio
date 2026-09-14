@@ -1,0 +1,7 @@
+{
+  "ignoredFiles": [
+    "/android/app/src/main/res/mipmap-*/ic_launcher_background.png",
+    "/ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732*.png",
+    "/native/icons/icon-background.png"
+  ]
+}
