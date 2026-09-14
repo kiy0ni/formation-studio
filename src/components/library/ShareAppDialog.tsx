@@ -4,7 +4,7 @@ import { notify } from '../common/Toast';
 import { Modal } from '../common/ui';
 
 export const SITE_URL = 'https://kiy0ni.github.io/formation-studio/';
-const MESSAGE = 'Lineup : crée tes formations de danse, synchronisées avec la musique. Gratuit.';
+const MESSAGE = 'Lineup : créez vos formations de danse, synchronisées avec la musique. Gratuit.';
 
 /** QR code as SVG squares (black on white, readable by every phone camera). */
 export function QrCode({ text }: { text: string }) {
@@ -50,7 +50,7 @@ export function ShareAppDialog({ onClose }: { onClose: () => void }) {
                 await navigator.clipboard.writeText(SITE_URL);
                 notify('Lien copié');
               } catch {
-                prompt('Copiez le lien :', SITE_URL);
+                notify(`Copie impossible · ${SITE_URL}`);
               }
             }}
           >

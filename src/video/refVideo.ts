@@ -188,6 +188,10 @@ export async function removeRefVideo() {
   updateRefVideo(null);
   if (!hash) return;
   const others = (await db.listChoreos()).some((c) => c.id !== id && c.video?.hash === hash);
-  if (!others) await db.deleteVideo(hash);
+  if (!others) {
+    await db.deleteVideo(hash);
+    // what the detection found in it is useless without the video
+    void import('../detect/analysis').then((m) => m.forgetAnalysis(hash));
+  }
   void loadRefVideo(undefined);
 }

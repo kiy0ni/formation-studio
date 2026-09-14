@@ -76,7 +76,7 @@ function readTimelineOpen() {
   } catch {
     /* private mode */
   }
-  return typeof window === 'undefined' || window.innerWidth > 860;
+  return typeof window === 'undefined' || (window.innerWidth > 860 && window.innerHeight > 500);
 }
 
 export const useEditor = create<EditorState>((set, get) => ({
@@ -206,7 +206,8 @@ export const useEditor = create<EditorState>((set, get) => ({
       applyPatch(d, patch);
     });
     if (next === doc) return;
-    set({ doc: next, flat: flatten(next) });
+    // dated like any change: what came through a shared room is saved and sent to the account too
+    set({ doc: produce(next, (d) => void (d.updatedAt = Date.now())), flat: flatten(next) });
     // keep gesture base consistent so remote edits don't land in our undo entry
     const g = get().gesture;
     if (g) set({ gesture: { label: g.label, base: mergeIntoFlat(g.base, patch) } });

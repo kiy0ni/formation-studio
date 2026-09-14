@@ -28,7 +28,7 @@ export function Tour({ onClose }: { onClose: () => void }) {
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
-  const mobile = viewport.w <= 860;
+  const mobile = viewport.w <= 860 || viewport.h <= 500;
   const step = STEPS[i];
 
   const finish = useCallback(() => {

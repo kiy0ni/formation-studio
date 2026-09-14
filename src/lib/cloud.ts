@@ -123,6 +123,8 @@ export async function changePassword(password: string) {
   const sb = await init();
   const { error } = await sb.auth.updateUser({ password });
   if (error) throw new Error(french(error.message));
+  // anyone else signed in with the old password is signed out
+  await sb.auth.signOut({ scope: 'others' }).catch(() => {});
 }
 
 /** Forgotten password, step 1: a code is emailed. */
@@ -140,6 +142,7 @@ export async function resetWithCode(email: string, code: string, password: strin
   await onSession(data.session);
   const updated = await sb.auth.updateUser({ password });
   if (updated.error) throw new Error(french(updated.error.message));
+  await sb.auth.signOut({ scope: 'others' }).catch(() => {});
 }
 
 /** Deletes the account and everything stored online. The password is checked again first. */
@@ -271,7 +274,11 @@ async function applyRow(row: Row): Promise<boolean> {
     if (!local || stamp(local) > row.updated_at) return false;
     if (row.kind === 'choreo') {
       await db.deleteChoreo(row.id, { remote: true });
-      if (useEditor.getState().doc?.id === row.id) location.hash = '#/';
+      if (useEditor.getState().doc?.id === row.id) {
+        // closed without saving it back (which would bring it back online)
+        useEditor.getState().unload();
+        location.hash = '#/';
+      }
     } else if (row.kind === 'team') await db.deleteTeam(row.id, { remote: true });
     else await db.deleteFolder(row.id, { remote: true });
     return true;
@@ -292,10 +299,24 @@ async function applyRow(row: Row): Promise<boolean> {
   return true;
 }
 
+let pendingRemote: Choreo | null = null;
+useEditor.subscribe((s, prev) => {
+  if (prev.gesture && !s.gesture && pendingRemote) {
+    const remote = pendingRemote;
+    pendingRemote = null;
+    applyToOpenEditor(remote);
+  }
+});
+
 /** The choreography open on screen was edited on another device: show the new version in place. */
 function applyToOpenEditor(remote: Choreo) {
   const s = useEditor.getState();
-  if (!s.doc || s.doc.id !== remote.id || s.doc.updatedAt >= remote.updatedAt || s.gesture) return;
+  if (!s.doc || s.doc.id !== remote.id || s.doc.updatedAt >= remote.updatedAt) return;
+  // a drag is in progress: shown once it ends
+  if (s.gesture) {
+    pendingRemote = remote;
+    return;
+  }
   const change = diff(s.flat, flatten(remote));
   if (change) s.applyRemote(change.after);
   const doc = useEditor.getState().doc;

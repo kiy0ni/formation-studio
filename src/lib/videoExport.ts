@@ -227,9 +227,10 @@ async function recordRealtime(
     }
     stream.getTracks().forEach((t) => t.stop());
     renderer.stopRealtime?.();
+    // closed whatever happened (cancelled or failed exports used to keep an AudioContext open)
+    void stopped.catch(() => {}).finally(() => ac.close().catch(() => {}));
   }
   await stopped;
-  ac.close();
   const type = (rec.mimeType || mimeType || 'video/webm').split(';')[0];
   return {
     blob: new Blob(chunks, { type }),

@@ -66,4 +66,14 @@ if (import.meta.env.PROD && !IS_NATIVE_APP && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
+  // a new version took over while this page was open: say so (its old files may be gone)
+  const hadWorker = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadWorker) useEditor.getState().notify('Nouvelle version de Lineup : rechargez la page');
+  });
 }
+// a lazy part of the app could not load (typically right after an update): a reload gets the new files
+window.addEventListener('vite:preloadError', (e) => {
+  e.preventDefault();
+  location.reload();
+});

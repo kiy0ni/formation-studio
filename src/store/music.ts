@@ -27,7 +27,8 @@ export async function loadMusic(hash: string | undefined, fetchRemote?: (hash: s
     return;
   }
   useMusic.setState({ hash, loading: true, missing: false, peaks: null });
-  let blob = (await db.getAudio(hash)) ?? null;
+  let blob: Blob | null = (await db.getAudio(hash)) ?? null;
+  if (blob && !(blob instanceof Blob)) blob = null; // unreadable entry
   if (!blob && fetchRemote) blob = await fetchRemote(hash);
   if (my !== token) return;
   if (!blob) {

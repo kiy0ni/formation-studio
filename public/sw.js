@@ -36,7 +36,8 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       (async () => {
         try {
-          const res = await fetch(req);
+          // slow network: the cached copy after 3 s rather than a blank screen
+          const res = await Promise.race([fetch(req), new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))]);
           if (res.ok) (await caches.open(CACHE)).put(url('index.html'), res.clone());
           return res;
         } catch {

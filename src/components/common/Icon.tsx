@@ -1,4 +1,4 @@
-const P: Record<string, string> = {
+const P = {
   back: 'M15 18l-6-6 6-6',
   chevronDown: 'M6 9l6 6 6-6',
   chevronRight: 'M9 18l6-6-6-6',
@@ -73,7 +73,7 @@ const P: Record<string, string> = {
   fit: 'M3 9V3h6 M21 9V3h-6 M3 15v6h6 M21 15v6h-6',
   user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   split: 'M16 3h5v5 M8 3H3v5 M12 22v-8.3a4 4 0 0 0-1.2-2.9L3 3 M21 3l-7.8 7.8',
-};
+} satisfies Record<string, string>;
 
 export type IconName = keyof typeof P;
 

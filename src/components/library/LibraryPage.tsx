@@ -51,7 +51,9 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
 
   useEffect(() => {
     refresh();
-    const onFocus = () => refresh();
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
     return () => {
@@ -64,6 +66,7 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
     if (!create) return;
     setCreating({});
     history.replaceState(null, '', '#/');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
   }, [create]);
 
   // each tab opens at the top (on phones the list scrolls inside the page)

@@ -70,6 +70,14 @@ insert into storage.buckets (id, name, public, file_size_limit)
 values ('audio', 'audio', false, 52428800)
 on conflict (id) do nothing;
 
+-- files in a folder of a bucket, counted without the row rules (a rule counting its own table would loop)
+create or replace function public.folder_files(p_bucket text, p_folder text)
+returns integer language sql security definer set search_path = '' stable as $$
+  select count(*)::integer from storage.objects o where o.bucket_id = p_bucket and (storage.foldername(o.name))[1] = p_folder
+$$;
+revoke all on function public.folder_files(text, text) from public;
+grant execute on function public.folder_files(text, text) to authenticated;
+
 drop policy if exists "audio read own" on storage.objects;
 create policy "audio read own" on storage.objects
   for select to authenticated
@@ -78,7 +86,8 @@ create policy "audio read own" on storage.objects
 drop policy if exists "audio insert own" on storage.objects;
 create policy "audio insert own" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'audio' and (storage.foldername(name))[1] = (select auth.uid())::text);
+  with check (bucket_id = 'audio' and (storage.foldername(name))[1] = (select auth.uid())::text and name ~ '^[0-9a-f-]{36}/[a-f0-9]{16,64}$'
+    and public.folder_files('audio', (select auth.uid())::text) < 200);
 
 drop policy if exists "audio update own" on storage.objects;
 create policy "audio update own" on storage.objects
@@ -169,6 +178,12 @@ begin
   if auth.uid() is null then
     raise exception 'not signed in';
   end if;
+  if pg_column_size(p_entries) > 4000000 then
+    raise exception 'too big';
+  end if;
+  if (select count(*) from public.rooms where owner = auth.uid()) >= 100 then
+    raise exception 'too many rooms';
+  end if;
   insert into public.rooms (owner, edit_code, view_code, entries)
   values (auth.uid(), replace(gen_random_uuid()::text, '-', ''), replace(gen_random_uuid()::text, '-', ''), coalesce(p_entries, '{}'::jsonb))
   returning * into r;
@@ -241,6 +256,9 @@ begin
   if public.room_role(p_room) not in ('owner', 'edit') or public.room_role(p_room) is null then
     raise exception 'read only';
   end if;
+  if pg_column_size(p_ops) > 1000000 then
+    raise exception 'too big';
+  end if;
   select entries into cur from public.rooms where id = p_room for update;
   for op in select * from jsonb_array_elements(p_ops) loop
     k := op ->> 'k';
@@ -255,6 +273,9 @@ begin
     n := n + 1;
   end loop;
   if n > 0 then
+    if pg_column_size(cur) > 6000000 then
+      raise exception 'too big';
+    end if;
     update public.rooms set entries = cur, updated_at = now() where id = p_room;
   end if;
   return n;
@@ -322,7 +343,8 @@ create policy "room audio read" on storage.objects
 drop policy if exists "room audio write" on storage.objects;
 create policy "room audio write" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'room-audio' and public.room_role(public.safe_uuid((storage.foldername(name))[1])) in ('owner', 'edit'));
+  with check (bucket_id = 'room-audio' and public.room_role(public.safe_uuid((storage.foldername(name))[1])) in ('owner', 'edit') and name ~ '^[0-9a-f-]{36}/[a-f0-9]{16,64}$'
+    and public.folder_files('room-audio', (storage.foldername(name))[1]) < 20);
 
 drop policy if exists "room audio update" on storage.objects;
 create policy "room audio update" on storage.objects

@@ -59,6 +59,8 @@ export async function importBackup(text: string) {
   }
   for (const f of data.folders ?? []) await db.saveFolder(f);
   for (const [hash, url] of Object.entries(data.audio ?? {})) {
+    // only sound embedded in the file itself, under a real hash name
+    if (typeof url !== 'string' || !url.startsWith('data:') || !/^[a-f0-9]{16,64}$/.test(hash)) continue;
     if (await db.getAudio(hash)) continue;
     const blob = await (await fetch(url)).blob();
     await db.putAudio(hash, blob);

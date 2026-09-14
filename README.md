@@ -78,18 +78,32 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 - **Placer depuis l'image** : la formation affichée prend les positions de l'image de la vidéo au curseur.
 - **Voir les positions détectées** : cercles pointillés sur la scène pendant la lecture.
 - Aucun réglage du sol à faire : la profondeur vient de la taille des danseurs (plus loin = plus petit).
-- Suivi des personnes : la salle vide est apprise (caméra fixe) pour décrire seulement les danseurs (cheveux, haut, pantalon, chaussures) ; le suivi coupe dès que deux danseurs se croisent, puis recolle les morceaux par apparence et selon où chacun peut être. Des tenues identiques restent difficiles à distinguer : échange de deux personnes dans la relecture.
+- Analyse **Rapide** (3 images/s) ou **Précise** (5 images/s, conseillée : les croisements sont mieux suivis).
+- Suivi des personnes : la salle vide est apprise (caméra fixe) pour décrire seulement les danseurs (cheveux, haut, bras, pantalon, chaussures) ; le suivi coupe dès que deux danseurs se croisent, puis les morceaux sont regroupés par apparence (jamais deux endroits au même moment, jamais de téléportation). Vérifié sur une vidéo étiquetée à la main (6 danseurs dont 4 en noir). Des tenues identiques restent difficiles : échange de deux personnes dans la relecture.
+- Placement : distances réelles, milieu habituel du groupe au milieu de la scène, positions sur les repères de la grille (option), trajets et moments de départ/arrivée repris de la vidéo (option, mode « Tout »).
 
 ## Disposition sur ordinateur
 
 - Les bords de la liste des formations et du panneau de réglages se glissent pour les redimensionner (taille gardée ; double-clic : taille normale).
 - Avec la vidéo de référence affichée, la vidéo passe en haut de la colonne de gauche, au-dessus des formations.
 - Notifications en haut de l'écran (jamais sur la timeline ni sur les boutons des fenêtres).
+- Relecture → **Vérifier** : chaque personne à six moments de la vidéo ; les personnes que l'app distingue mal sont marquées « À vérifier ».
+- Analyse interrompue (onglet fermé, téléphone éteint) : reprise là où elle en était. Résultats : `a:<hash>` (analyse), `m:<hash>` (résumé), `r:<hash>:<choré>` (relecture et positions appliquées, par chorégraphie) dans IndexedDB `fs-detect`, effacés avec la vidéo.
 - Moteur : MediaPipe Object Detector (EfficientDet-Lite0, `public/detect/person-detector.tflite`, 7 Mo) + WebAssembly (~11 Mo), téléchargés seulement à la première utilisation (exclus du pré-cache hors ligne). Résultats gardés par vidéo dans IndexedDB `fs-detect`.
 - Code isolé dans `src/detect/` ; points d'accroche : `<DetectSection />` dans `src/video/RefVideoPanel.tsx`, `<DetectGhosts />` dans `src/components/editor/Stage2D.tsx`, filtre `vision_wasm` dans `vite.config.ts`.
 - **Retirer la fonctionnalité** :
   - rapide : `AUTO_DETECT_ENABLED = false` dans `src/lib/config.ts`, puis publier ;
   - complet : revenir au repère `avant-detection-auto` (`git revert` du merge « Détection automatique », ou `git reset --hard avant-detection-auto` sur une branche), puis `npm uninstall @mediapipe/tasks-vision` si besoin.
+
+## Alertes à l'installation (Mac, Windows, Android)
+
+Les apps ne sont pas signées par Apple / Microsoft : macOS affiche « Apple n'a pas pu confirmer… », Windows « Windows a protégé votre ordinateur ». Le code est le même que le site ; c'est une question de certificat payant. L'app web installée (première option de « Installer ») n'a aucune alerte.
+
+Tout est prêt pour signer dès que les identifiants existent, sans changer le code :
+
+- **Mac** (compte Apple Developer, 99 €/an) : certificat « Developer ID Application » dans le trousseau du Mac, puis `APPLE_ID=… APPLE_APP_SPECIFIC_PASSWORD=… APPLE_TEAM_ID=… npm run build:desktop -- --mac` : l'app est signée, durcie et notarisée (électron-builder). Plus aucune alerte.
+- **Windows** (Azure Artifact Signing, ≈ 10 $/mois, ouvert aux particuliers de l'UE avec vérification d'identité) : la signature ne marche que sur Windows, donc via GitHub Actions → workflow « Windows signé » avec les secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SIGN_ENDPOINT`, `AZURE_SIGN_ACCOUNT`, `AZURE_SIGN_PROFILE`. Il remplace `Lineup-windows.exe` sur la release indiquée. Gratuit possible avec SignPath Foundation si le dépôt passe sous licence open source (MIT…) avec une page « code signing policy ».
+- **Android** : l'APK est déjà signé (clé dans `~/.formation-studio/`) ; l'avertissement « source inconnue » disparaît seulement via le Play Store (compte 25 $ une fois ; compte personnel : test fermé avec 12 testeurs pendant 14 jours avant publication).
 
 ## iPhone
 
@@ -101,7 +115,7 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 
 ```bash
 npm install
-npm run dev        # app (http://localhost:5173) + serveur de collaboration (port 8787)
+npm run dev        # app (http://localhost:5173)
 ```
 
 Production (un seul processus sert l'app et la collaboration) :
@@ -111,6 +125,11 @@ npm run build
 npm start          # http://127.0.0.1:8787
 npm run lan        # accessible depuis les téléphones du même réseau Wi-Fi
 ```
+
+## Tests
+
+- `npm run typecheck` puis `npm test` : tests unitaires (maths de la détection : apparence, suivi à travers un croisement, formations, trajets, grille, « qui danse qui », sol). Lancés par GitHub Actions à chaque push.
+- `npm run test:e2e` : tests navigateur (voir `tests/e2e/README.md`).
 
 ## Fonctionnalités
 

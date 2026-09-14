@@ -78,7 +78,7 @@ async function setup() {
     site_url: SITE,
     disable_signup: false,
     mailer_autoconfirm: true,
-    password_min_length: 6,
+    password_min_length: 8,
     external_anonymous_users_enabled: false,
   });
   console.log('✓ Connexion e-mail + mot de passe, sans e-mail de confirmation');

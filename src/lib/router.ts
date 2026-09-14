@@ -7,7 +7,17 @@ export type Route =
   | { name: 'print'; id: string };
 
 export function parseRoute(hash: string): Route {
-  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  const parts = hash
+    .replace(/^#\/?/, '')
+    .split('/')
+    .filter(Boolean)
+    .map((p) => {
+      try {
+        return decodeURIComponent(p);
+      } catch {
+        return p;
+      }
+    });
   switch (parts[0]) {
     case 'c':
       if (parts[1]) return { name: 'editor', id: parts[1] };

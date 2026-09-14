@@ -384,6 +384,7 @@ export default function Stage3D() {
       faceGeo.dispose();
       ringGeo.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
       el.removeChild(renderer.domElement);
     };
   }, []);

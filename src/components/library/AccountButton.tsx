@@ -79,8 +79,8 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
         go('code');
       });
     }
-    if (view === 'code' && !/^\d{6,10}$/.test(code.trim())) return setError('Entrez le code reçu par e-mail.');
-    if (password.length < 6) return setError('Mot de passe : 6 caractères minimum.');
+    if (view === 'code' && !/^\d{8}$/.test(code.trim())) return setError('Entrez le code reçu par e-mail.');
+    if (password.length < 8) return setError('Mot de passe : 8 caractères minimum.');
     return run(async () => {
       if (view === 'code') {
         await resetWithCode(email.trim(), code.trim(), password);
@@ -110,7 +110,7 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
               ]}
             />
             {emailInput}
-            <PasswordInput value={password} onChange={setPassword} placeholder={view === 'up' ? 'Mot de passe (6 caractères min.)' : 'Mot de passe'} isNew={view === 'up'} />
+            <PasswordInput value={password} onChange={setPassword} placeholder={view === 'up' ? 'Mot de passe (8 caractères min.)' : 'Mot de passe'} isNew={view === 'up'} />
             {error && <p className="error-text">{error}</p>}
             <button className="btn primary big" disabled={busy}>
               {busy ? 'Un instant…' : view === 'up' ? 'Créer le compte' : 'Se connecter'}
@@ -201,7 +201,7 @@ function AccountDialog({ onClose }: { onClose: () => void }) {
           className="account-form"
           onSubmit={(e) => {
             e.preventDefault();
-            if (password.length < 6) return setError('Mot de passe : 6 caractères minimum.');
+            if (password.length < 8) return setError('Mot de passe : 8 caractères minimum.');
             if (password !== password2) return setError('Les deux mots de passe sont différents.');
             run(async () => {
               await changePassword(password);

@@ -1,4 +1,4 @@
-import { click } from '../lib/audio';
+import { audioContext, click } from '../lib/audio';
 import { beatLength, totalDuration } from '../lib/model';
 import { useEditor } from './editor';
 
@@ -40,6 +40,8 @@ class Playback {
   play() {
     const s = useEditor.getState();
     if (!s.doc || s.playing) return;
+    // the metronome's AudioContext must be started from a user action (iOS)
+    if (s.metronome) void audioContext().resume().catch(() => {});
     const end = totalDuration(s.doc);
     if (s.time >= end - 0.05) s.setTime(s.loop ? s.loop.a : 0);
     useEditor.setState({ playing: true });
