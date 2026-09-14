@@ -4889,3 +4889,112 @@ input[type='checkbox'].switch {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* print sheet: dark on screen like the rest of the app, white on paper */
+.print-page {
+  --p-bg: var(--bg);
+  --p-card: var(--surface);
+  --p-line: var(--border);
+  --p-text: var(--text);
+  --p-muted: var(--muted);
+  --p-faint: var(--faint);
+  --p-floor: #1b1726;
+  --p-floor-stroke: #4a4560;
+  --p-grid: rgba(255, 255, 255, 0.08);
+  --p-num: #9b9ba7;
+  background: var(--p-bg);
+  color: var(--p-text);
+  min-height: 100dvh;
+}
+.print-toolbar {
+  background: var(--p-bg);
+  border-bottom-color: var(--p-line);
+  color: var(--p-text);
+}
+.print-toolbar .btn.ghost {
+  color: var(--p-text);
+}
+.print-header p,
+.print-sheet-head p,
+.print-caption p {
+  color: var(--p-muted);
+}
+.print-legend em {
+  color: var(--p-faint);
+}
+.print-card {
+  background: var(--p-card);
+  border-color: var(--p-line);
+}
+.p-floor {
+  fill: var(--p-floor);
+  stroke: var(--p-floor-stroke);
+}
+.p-grid {
+  stroke: var(--p-grid);
+}
+.p-num {
+  fill: var(--p-num);
+}
+.print-note {
+  color: var(--p-text) !important;
+}
+.print-table th,
+.print-table td {
+  border-bottom-color: var(--p-line);
+}
+.print-table th {
+  color: var(--p-faint);
+}
+@media print {
+  .print-page {
+    --p-bg: #fff;
+    --p-card: #fff;
+    --p-line: #e5e2ea;
+    --p-text: #15121f;
+    --p-muted: #5b5670;
+    --p-faint: #8a8599;
+    --p-floor: #f6f4f9;
+    --p-floor-stroke: #15121f;
+    --p-grid: #dcd8e4;
+    --p-num: #5b5670;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+}
+
+/* phone library: a fixed frame like the editor. Only the list scrolls, the bottom bar is part of the
+   frame, so it always sits at the bottom (iPhone home-screen apps misplace "fixed" bars on short pages) */
+@media (max-width: 860px) {
+  .library {
+    position: fixed;
+    inset: 0;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .lib-top {
+    flex-shrink: 0;
+  }
+  .lib-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 96px;
+  }
+  .tabbar {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    flex-shrink: 0;
+  }
+  .fab {
+    position: absolute;
+  }
+}

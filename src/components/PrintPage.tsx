@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { db } from '../lib/db';
-import { describePos } from '../lib/exporters';
+import { describePos, download, safe } from '../lib/exporters';
+import { detectPlatform } from '../lib/install';
 import { initials, samplePath, textOn } from '../lib/geometry';
 import { formatTime, sortedDancers, sortedFormations, sortedProps, timeline, totalDuration } from '../lib/model';
 import { navigate } from '../lib/router';
 import type { Choreo, Formation, ID } from '../lib/types';
 import { IS_PHONE_APP } from '../lib/platform';
 import { Icon } from './common/Icon';
+import { notify } from './common/Toast';
 
-/** Browsers and the desktop app use the print dialog; the Android app calls the system print service. */
+/** Browsers and the desktop app use the print dialog; the phone apps call the system print service. */
 async function printPage(name: string) {
   if (!IS_PHONE_APP) return window.print();
   const { registerPlugin } = await import('@capacitor/core');
@@ -20,6 +22,11 @@ export function PrintPage({ id }: { id: string }) {
   const [doc, setDoc] = useState<Choreo | null | undefined>(undefined);
   const [sheets, setSheets] = useState(true);
   const [paths, setPaths] = useState(true);
+  const [busy, setBusy] = useState(false);
+  /** Ready PDF waiting for a tap on "share" (the share sheet needs a fresh tap). */
+  const [pdf, setPdf] = useState<File | null>(null);
+
+  useEffect(() => setPdf(null), [sheets, paths]);
 
   useEffect(() => {
     db.getChoreo(id).then((d) => setDoc(d ?? null));
@@ -27,6 +34,34 @@ export function PrintPage({ id }: { id: string }) {
 
   if (doc === undefined) return <div className="center-screen"><div className="spinner" /></div>;
   if (doc === null) return <div className="center-screen"><p>Chorégraphie introuvable.</p></div>;
+
+  const makePdf = async () => {
+    setBusy(true);
+    try {
+      const { choreographyPdf } = await import('../lib/printPdf');
+      const blob = await choreographyPdf(
+        doc,
+        {
+          formations: Array.from(document.querySelectorAll<SVGSVGElement>('.print-card .print-stage')),
+          routes: Array.from(document.querySelectorAll<SVGSVGElement>('.print-sheet .print-stage')),
+        },
+        { sheets },
+      );
+      const file = new File([blob], `${safe(doc.name)}.pdf`, { type: 'application/pdf' });
+      const shareable = !IS_PHONE_APP && matchMedia('(pointer: coarse)').matches && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+      if (shareable) setPdf(file);
+      else {
+        await download(file.name, blob);
+        notify('PDF créé');
+      }
+    } catch {
+      notify('Impossible de créer le PDF');
+    } finally {
+      setBusy(false);
+    }
+  };
+  // printing from a web page does not work on iPhone: the PDF (then Share → Print) does
+  const canPrint = IS_PHONE_APP || detectPlatform() !== 'ios';
 
   const items = timeline(doc);
   const dancers = sortedDancers(doc);
@@ -45,9 +80,20 @@ export function PrintPage({ id }: { id: string }) {
           <input type="checkbox" checked={sheets} onChange={(e) => setSheets(e.target.checked)} /> Fiches danseurs
         </label>
         <span className="grow" />
-        <button className="btn primary" onClick={() => printPage(doc.name)}>
-          <Icon name="print" /> Imprimer / Enregistrer en PDF
-        </button>
+        {canPrint && (
+          <button className="btn ghost" onClick={() => printPage(doc.name)}>
+            <Icon name="print" /> Imprimer
+          </button>
+        )}
+        {pdf ? (
+          <button className="btn primary" onClick={() => navigator.share({ files: [pdf], title: doc.name }).catch(() => {})}>
+            <Icon name="share" /> Partager / enregistrer le PDF
+          </button>
+        ) : (
+          <button className="btn primary" disabled={busy} onClick={makePdf}>
+            <Icon name="download" /> {busy ? 'Création du PDF…' : 'Télécharger le PDF'}
+          </button>
+        )}
       </div>
 
       <header className="print-header">

@@ -66,6 +66,11 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
     history.replaceState(null, '', '#/');
   }, [create]);
 
+  // each tab opens at the top (on phones the list scrolls inside the page)
+  useEffect(() => {
+    document.querySelector('.lib-content')?.scrollTo(0, 0);
+  }, [tab]);
+
   const q = norm(query.trim());
   const filtered = useMemo(
     () =>

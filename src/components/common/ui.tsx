@@ -21,7 +21,8 @@ export function Modal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  return (
+  // rendered at the page root: no scrolling list or toolbar around it can clip it or restyle it
+  return createPortal(
     <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: width }} role="dialog" aria-modal>
         <header className="modal-head">
@@ -33,7 +34,8 @@ export function Modal({
         <div className="modal-body">{children}</div>
         {footer && <footer className="modal-foot">{footer}</footer>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
