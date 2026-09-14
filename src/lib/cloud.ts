@@ -102,7 +102,10 @@ const ERRORS: [RegExp, string][] = [
   [/already registered|already exists/i, 'Ce compte existe déjà : connectez-vous.'],
   [/password should be at least|weak password/i, 'Mot de passe : 6 caractères minimum.'],
   [/invalid.*email|email.*invalid/i, 'E-mail invalide.'],
-  [/rate limit|too many/i, 'Trop d’essais, réessayez dans une minute.'],
+  [/rate limit|too many|security purposes/i, 'Trop d’essais, réessayez dans une minute.'],
+  [/should be different/i, 'Choisissez un mot de passe différent de l’ancien.'],
+  [/token has expired|invalid.*token|otp/i, 'Code incorrect ou expiré.'],
+  [/error sending|smtp/i, 'Envoi de l’e-mail impossible pour le moment.'],
   [/fetch|network|load failed/i, 'Pas de connexion internet.'],
 ];
 const french = (msg: string) => ERRORS.find(([re]) => re.test(msg))?.[1] ?? msg;
@@ -113,6 +116,55 @@ export async function signIn(email: string, password: string, createAccount: boo
   if (res.error) throw new Error(french(res.error.message));
   if (!res.data.session) throw new Error('Compte créé : connectez-vous.');
   await onSession(res.data.session);
+}
+
+/** Signed in: new password, no email needed. */
+export async function changePassword(password: string) {
+  const sb = await init();
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) throw new Error(french(error.message));
+}
+
+/** Forgotten password, step 1: a code is emailed. */
+export async function sendResetCode(email: string) {
+  const sb = await init();
+  const { error } = await sb.auth.resetPasswordForEmail(email);
+  if (error) throw new Error(french(error.message));
+}
+
+/** Forgotten password, step 2: code + new password, then signed in. */
+export async function resetWithCode(email: string, code: string, password: string) {
+  const sb = await init();
+  const { data, error } = await sb.auth.verifyOtp({ email, token: code, type: 'recovery' });
+  if (error || !data.session) throw new Error(french(error?.message ?? 'otp'));
+  await onSession(data.session);
+  const updated = await sb.auth.updateUser({ password });
+  if (updated.error) throw new Error(french(updated.error.message));
+}
+
+/** Deletes the account and everything stored online. The password is checked again first. */
+export async function deleteAccount(password: string) {
+  const sb = await init();
+  const user = session?.user;
+  if (!user?.email) throw new Error('Non connecté.');
+  const check = await sb.auth.signInWithPassword({ email: user.email, password });
+  if (check.error) throw new Error(/invalid login/i.test(check.error.message) ? 'Mot de passe incorrect.' : french(check.error.message));
+  // music files first: the database cannot remove them
+  for (;;) {
+    const { data, error } = await sb.storage.from('audio').list(user.id, { limit: 100 });
+    if (error) throw new Error(error.message);
+    if (!data.length) break;
+    const removed = await sb.storage.from('audio').remove(data.map((f) => `${user.id}/${f.name}`));
+    if (removed.error) throw new Error(removed.error.message);
+    if (data.length < 100) break;
+  }
+  const { error } = await sb.rpc('delete_my_account');
+  if (error) throw new Error(error.message);
+  await sb.auth.signOut({ scope: 'local' });
+  session = null;
+  await syncStore.setMeta('uid', null);
+  await syncStore.setMeta('cursor', null);
+  useCloud.setState({ email: null, status: 'off', error: null });
 }
 
 export async function signOut() {

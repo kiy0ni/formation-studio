@@ -85,4 +85,27 @@ create policy "audio update own" on storage.objects
   for update to authenticated
   using (bucket_id = 'audio' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
+drop policy if exists "audio delete own" on storage.objects;
+create policy "audio delete own" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'audio' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- Deletes the signed-in account; its synced items go with it (on delete cascade).
+-- Music files are removed by the app first, through the Storage API.
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  delete from auth.users where id = auth.uid();
+end
+$$;
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
+
 notify pgrst, 'reload schema';

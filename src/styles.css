@@ -4629,3 +4629,57 @@ input[type='checkbox'].switch {
     margin: 0 4px;
   }
 }
+.password-field {
+  position: relative;
+}
+.password-field input {
+  width: 100%;
+  padding-right: 48px;
+}
+.password-field .icon-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+}
+.code-input {
+  text-align: center;
+  letter-spacing: 0.35em;
+  font-size: 22px !important;
+  font-variant-numeric: tabular-nums;
+}
+.account-more {
+  background: var(--surface-2);
+  margin-bottom: 10px;
+}
+.account-more .more-row {
+  font-size: 14px;
+  padding: 12px 14px;
+}
+.more-row.danger-row,
+.more-row.danger-row svg {
+  color: var(--danger, #ff5a5f);
+}
+.account-warning {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 90, 95, 0.1);
+  color: var(--danger, #ff5a5f);
+}
+.account-warning p {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.btn.danger-solid {
+  background: var(--danger, #ff5a5f);
+  border-color: transparent;
+  color: #fff;
+}
+.btn.danger-solid:disabled {
+  opacity: 0.5;
+}
