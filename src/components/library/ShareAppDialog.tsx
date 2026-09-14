@@ -7,7 +7,7 @@ export const SITE_URL = 'https://kiy0ni.github.io/formation-studio/';
 const MESSAGE = 'Lineup : crée tes formations de danse, synchronisées avec la musique. Gratuit.';
 
 /** QR code as SVG squares (black on white, readable by every phone camera). */
-function QrCode({ text }: { text: string }) {
+export function QrCode({ text }: { text: string }) {
   const [cells, setCells] = useState<boolean[][] | null>(null);
   useEffect(() => {
     let alive = true;

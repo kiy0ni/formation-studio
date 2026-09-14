@@ -924,7 +924,8 @@ function MorePanel() {
         {row('video', 'Vidéo', () => set({ dialog: 'video', sheetOpen: false }))}
         {row('print', 'PDF', () => openRoute(`/print/${doc.id}`, true))}
         {row('image', 'Image', () => (set({ sheetOpen: false }), exportPng()))}
-        {row('share', 'Envoyer la chorégraphie', () => exportJson(doc))}
+        {row('users', 'Partager en direct', () => set({ dialog: 'share', sheetOpen: false }), doc.collab ? 'Activé' : undefined)}
+        {row('share', 'Envoyer un fichier', () => exportJson(doc))}
       </div>
       <div className="more-group">
         {row('sparkles', 'Visite guidée', () => (set({ sheetOpen: false }), startTour()))}

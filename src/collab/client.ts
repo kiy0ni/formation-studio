@@ -1,9 +1,19 @@
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { create } from 'zustand';
+import { cloudSession, fetchCloudAudio, useCloud } from '../lib/cloud';
 import { db } from '../lib/db';
 import { flatten, type Flat, type Patch } from '../lib/flatten';
 import { uid } from '../lib/id';
 import type { Choreo, CollabLink, ID } from '../lib/types';
 import { onLocalChange, useEditor } from '../store/editor';
+
+/**
+ * Shared choreographies over Supabase (account required):
+ * - the room keeps the choreography as a flat map { key: { v, t } } (latest timestamp wins),
+ * - edits are saved with `room_push`, then broadcast live on the private channel "room:<id>",
+ * - presence shows who is there and what they select.
+ * Offline edits stay pending on the device and are sent when the connection comes back.
+ */
 
 export interface Peer {
   clientId: string;
@@ -35,7 +45,24 @@ interface Persisted {
   pending: Op[];
 }
 
+type Entries = Record<string, { v: unknown; t: string }>;
+export interface RoomSnapshot {
+  role: 'edit' | 'view';
+  owner: boolean;
+  entries: Entries;
+  editCode: string | null;
+  viewCode: string | null;
+}
+export interface RoomMember {
+  userId: string;
+  name: string;
+  role: 'owner' | 'edit' | 'view';
+  me: boolean;
+}
+
 const CLIENT_ID = uid(8);
+const AUDIO_BUCKET = 'room-audio';
+const CHUNK = 150;
 
 /** Hybrid logical clock → lexicographically comparable timestamps. */
 let lastMs = 0;
@@ -57,41 +84,59 @@ function observe(t: string) {
   } else if (ms === lastMs && c > counter) counter = c;
 }
 
-export const displayName = () => localStorage.getItem('fs-name') || 'Chorégraphe';
+export const displayName = () => localStorage.getItem('fs-name') || useCloud.getState().email?.split('@')[0] || 'Chorégraphe';
 export const displayColor = () => localStorage.getItem('fs-color') || '#ff4d8d';
 
-function wsUrl(link: CollabLink) {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${location.host}/ws?room=${encodeURIComponent(link.roomId)}&key=${encodeURIComponent(link.key)}`;
+async function signedIn() {
+  const c = await cloudSession();
+  if (!c) throw new Error('Connectez-vous pour partager.');
+  return c;
 }
+
+const ERRORS: [RegExp, string][] = [
+  [/invalid link|invalid input syntax for type uuid/i, 'Lien invalide ou expiré'],
+  [/no access/i, 'Accès retiré'],
+  [/read only/i, 'Lecture seule'],
+  [/owner only/i, 'Réservé au créateur du partage'],
+  [/fetch|network|load failed/i, 'Pas de connexion internet'],
+];
+const french = (msg: string) => ERRORS.find(([re]) => re.test(msg))?.[1] ?? msg;
 
 export async function createRoom(doc: Choreo): Promise<CollabLink> {
+  const { sb } = await signedIn();
   const flat = flatten(doc);
   const t = tick();
-  const entries: Record<string, { v: unknown; t: string }> = {};
+  const entries: Entries = {};
   const clock: Record<string, string> = {};
   for (const k in flat) {
-    entries[k] = { v: flat[k], t };
+    entries[k] = { v: flat[k] ?? null, t };
     clock[k] = t;
   }
-  const res = await fetch('/api/rooms', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ entries }),
-  });
-  if (!res.ok) throw new Error('Serveur de collaboration injoignable');
-  const { roomId, editKey, viewKey } = await res.json();
+  const { data, error } = await sb.rpc('create_room', { p_entries: entries, p_name: displayName() });
+  if (error) throw new Error(french(error.message));
+  const r = data as { room: string; edit_code: string; view_code: string };
   await db.setCollabState<Persisted>(doc.id, { clock, pending: [] });
-  return { roomId, key: editKey, role: 'edit', editKey, viewKey };
+  return { roomId: r.room, key: r.edit_code, role: 'edit', owner: true, editKey: r.edit_code, viewKey: r.view_code };
 }
 
-export async function fetchRoom(roomId: string, key: string) {
-  const res = await fetch(`/api/rooms/${encodeURIComponent(roomId)}?key=${encodeURIComponent(key)}`);
-  if (!res.ok) throw new Error(res.status === 403 ? 'Lien invalide' : 'Salle introuvable');
-  return (await res.json()) as { role: 'edit' | 'view'; entries: Record<string, { v: unknown; t: string }> };
+/** Current state of a room the user belongs to (also tells the role and, for editors, the links). */
+export async function openRoom(roomId: string): Promise<RoomSnapshot> {
+  const { sb } = await signedIn();
+  const { data, error } = await sb.rpc('room_open', { p_room: roomId });
+  if (error) throw new Error(french(error.message));
+  const r = data as { role: 'owner' | 'edit' | 'view'; entries: Entries; edit_code: string | null; view_code: string | null };
+  return { role: r.role === 'view' ? 'view' : 'edit', owner: r.role === 'owner', entries: r.entries ?? {}, editCode: r.edit_code, viewCode: r.view_code };
 }
 
-export async function seedFromRoom(choreoId: ID, entries: Record<string, { v: unknown; t: string }>) {
+/** Opening a shared link: becomes a member (editor or reader), then reads the room. */
+export async function fetchRoom(roomId: string, code: string): Promise<RoomSnapshot> {
+  const { sb } = await signedIn();
+  const { error } = await sb.rpc('join_room', { p_room: roomId, p_code: code, p_name: displayName() });
+  if (error) throw new Error(french(error.message));
+  return openRoom(roomId);
+}
+
+export async function seedFromRoom(choreoId: ID, entries: Entries) {
   const clock: Record<string, string> = {};
   for (const k in entries) {
     clock[k] = entries[k].t;
@@ -100,46 +145,73 @@ export async function seedFromRoom(choreoId: ID, entries: Record<string, { v: un
   await db.setCollabState<Persisted>(choreoId, { clock, pending: [] });
 }
 
+export async function listMembers(roomId: string): Promise<RoomMember[]> {
+  const { sb, userId } = await signedIn();
+  const { data, error } = await sb.from('room_members').select('user_id,name,role').eq('room_id', roomId).order('joined_at');
+  if (error) throw new Error(french(error.message));
+  return (data as { user_id: string; name: string; role: RoomMember['role'] }[]).map((m) => ({ userId: m.user_id, name: m.name || 'Membre', role: m.role, me: m.user_id === userId }));
+}
+
+export async function removeMember(roomId: string, userId: string) {
+  const { sb } = await signedIn();
+  const { error } = await sb.from('room_members').delete().eq('room_id', roomId).eq('user_id', userId);
+  if (error) throw new Error(french(error.message));
+}
+
+/** Owner: new links; the old ones stop working (people already in keep their access). */
+export async function rotateCodes(roomId: string): Promise<{ editKey: string; viewKey: string }> {
+  const { sb } = await signedIn();
+  const { data, error } = await sb.rpc('rotate_room_codes', { p_room: roomId });
+  if (error) throw new Error(french(error.message));
+  const r = data as { edit_code: string; view_code: string };
+  return { editKey: r.edit_code, viewKey: r.view_code };
+}
+
 export async function ensureAudioUploaded(link: CollabLink, hash: string) {
+  if (link.role !== 'edit') return;
   try {
-    const check = await fetch(`/api/audio/${hash}?check=1&room=${link.roomId}&key=${link.key}`);
-    if (!check.ok || (await check.json()).exists) return;
+    const c = await cloudSession();
     const blob = await db.getAudio(hash);
-    if (!blob) return;
-    await fetch(`/api/audio/${hash}?room=${link.roomId}&key=${link.key}`, {
-      method: 'PUT',
-      headers: { 'content-type': blob.type || 'application/octet-stream' },
-      body: blob,
-    });
+    if (!c || !(blob instanceof Blob) || !blob.size) return;
+    const bytes = await blob.arrayBuffer();
+    const { error } = await c.sb.storage.from(AUDIO_BUCKET).upload(`${link.roomId}/${hash}`, bytes, { upsert: false, contentType: blob.type || 'application/octet-stream' });
+    if (error && !/exists|duplicate|409/i.test(`${error.message} ${(error as { statusCode?: string }).statusCode ?? ''}`)) console.warn('[share] music not uploaded', error.message);
   } catch {
-    /* offline — retried on next connect */
+    /* offline: retried when the room reconnects */
   }
 }
 
 export async function downloadAudio(link: CollabLink, hash: string): Promise<Blob | null> {
   try {
-    const res = await fetch(`/api/audio/${hash}?room=${link.roomId}&key=${link.key}`);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    await db.putAudio(hash, blob);
-    return blob;
+    const c = await cloudSession();
+    if (c) {
+      const { data } = await c.sb.storage.from(AUDIO_BUCKET).download(`${link.roomId}/${hash}`);
+      if (data?.size) {
+        await db.putAudio(hash, data, { remote: true });
+        return data;
+      }
+    }
   } catch {
-    return null;
+    /* fall back to the account's own copy */
   }
+  return fetchCloudAudio(hash);
 }
 
 /** One live session for the choreography open in the editor. */
 export class CollabSession {
-  private ws: WebSocket | null = null;
+  private sb: SupabaseClient | null = null;
+  private channel: RealtimeChannel | null = null;
   private state: Persisted = { clock: {}, pending: [] };
   private closed = false;
+  private online = false;
+  private sending = false;
   private retry = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private presenceTimer: ReturnType<typeof setTimeout> | null = null;
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private unsubs: (() => void)[] = [];
   private batch: Record<string, Op> = {};
-  private inflight = new Map<string, Op[]>();
 
   constructor(
     private choreoId: ID,
@@ -150,7 +222,7 @@ export class CollabSession {
   async start() {
     this.state = (await db.getCollabState<Persisted>(this.choreoId)) ?? { clock: {}, pending: [] };
     for (const t of Object.values(this.state.clock)) observe(t);
-    useCollab.setState({ status: 'connecting', pending: this.state.pending.length, peers: {} });
+    useCollab.setState({ status: 'connecting', pending: this.state.pending.length, peers: {}, error: undefined });
     this.unsubs.push(onLocalChange((after) => this.local(after)));
     let lastSel = '';
     this.unsubs.push(
@@ -163,124 +235,137 @@ export class CollabSession {
       }),
     );
     window.addEventListener('online', this.reconnectNow);
-    this.connect();
+    void this.connect();
   }
 
   stop() {
     this.closed = true;
+    this.online = false;
     this.unsubs.forEach((u) => u());
     window.removeEventListener('online', this.reconnectNow);
-    if (this.timer) clearTimeout(this.timer);
-    if (this.flushTimer) clearTimeout(this.flushTimer);
+    for (const t of [this.timer, this.flushTimer, this.presenceTimer]) if (t) clearTimeout(t);
     this.flushBatch();
-    this.ws?.close();
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      void db.setCollabState<Persisted>(this.choreoId, this.state);
+    }
+    const channel = this.channel;
+    this.channel = null;
+    if (channel && this.sb) void this.sb.removeChannel(channel);
     useCollab.setState({ status: 'off', peers: {}, pending: 0 });
   }
 
   private reconnectNow = () => {
-    if (this.ws && this.ws.readyState <= 1) return;
+    if (this.online || this.closed) return;
     this.retry = 0;
-    this.connect();
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    void this.connect();
   };
 
-  private connect() {
-    if (this.closed) return;
-    useCollab.setState({ status: this.retry ? 'offline' : 'connecting' });
-    const ws = new WebSocket(wsUrl(this.link));
-    this.ws = ws;
-    ws.onopen = () => {
-      this.retry = 0;
-      ws.send(JSON.stringify({ type: 'hello', clientId: CLIENT_ID, name: displayName(), color: displayColor() }));
-    };
-    ws.onmessage = (ev) => this.message(JSON.parse(ev.data));
-    ws.onclose = () => {
-      if (this.ws !== ws) return;
-      this.ws = null;
-      this.inflight.clear();
-      if (this.closed) return;
-      useCollab.setState({ status: 'offline', peers: {} });
-      const delay = Math.min(15000, 800 * 2 ** this.retry++);
-      this.timer = setTimeout(() => this.connect(), delay);
-    };
-    ws.onerror = () => ws.close();
+  private scheduleReconnect() {
+    this.online = false;
+    if (this.closed || this.timer) return;
+    useCollab.setState({ status: 'offline', peers: {} });
+    const delay = Math.min(15000, 800 * 2 ** this.retry++);
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      void this.connect();
+    }, delay);
   }
 
-  private message(msg: any) {
-    const editor = useEditor.getState();
-    switch (msg.type) {
-      case 'init': {
-        const patch: Patch = {};
-        for (const k in msg.entries) {
-          const e = msg.entries[k];
-          observe(e.t);
-          const mine = this.state.clock[k];
-          if (!mine || e.t > mine) {
-            this.state.clock[k] = e.t;
-            patch[k] = e.v;
-          }
-        }
-        this.state.pending = this.state.pending.filter((op) => !msg.entries[op.k] || op.t > msg.entries[op.k].t);
-        if (Object.keys(patch).length) editor.applyRemote(patch);
-        if (msg.role === 'view' && !editor.readOnly) useEditor.setState({ readOnly: true });
-        useCollab.setState({ status: 'online', error: undefined });
-        this.persist();
-        this.sendPending();
-        this.schedulePresence();
-        this.checkMusic();
-        break;
-      }
-      case 'ops': {
-        const patch: Patch = {};
-        for (const op of msg.ops as Op[]) {
-          observe(op.t);
-          const mine = this.state.clock[op.k];
-          if (!mine || op.t > mine) {
-            this.state.clock[op.k] = op.t;
-            patch[op.k] = op.v;
-          }
-        }
-        if (Object.keys(patch).length) {
-          editor.applyRemote(patch);
-          if ('music' in patch) this.checkMusic();
-          this.persist();
-        }
-        break;
-      }
-      case 'ack': {
-        const sent = this.inflight.get(msg.id);
-        this.inflight.delete(msg.id);
-        if (sent) {
-          const set = new Set(sent);
-          this.state.pending = this.state.pending.filter((op) => !set.has(op));
-          useCollab.setState({ pending: this.state.pending.length });
-          this.persist();
-        }
-        break;
-      }
-      case 'presence': {
-        if (msg.clientId === CLIENT_ID) break;
-        useCollab.setState((s) => ({ peers: { ...s.peers, [msg.clientId]: { clientId: msg.clientId, ...msg.data } } }));
-        break;
-      }
-      case 'leave': {
-        useCollab.setState((s) => {
-          const peers = { ...s.peers };
-          delete peers[msg.clientId];
-          return { peers };
-        });
-        break;
-      }
-      case 'error':
-        useCollab.setState({ status: 'error', error: msg.message });
-        break;
+  private async connect() {
+    if (this.closed) return;
+    const c = await cloudSession();
+    if (!c) return void useCollab.setState({ status: 'error', error: 'Connectez-vous pour retrouver le partage.' });
+    this.sb = c.sb;
+    const old = this.channel;
+    this.channel = null;
+    if (old) await c.sb.removeChannel(old);
+    useCollab.setState({ status: this.retry ? 'offline' : 'connecting' });
+
+    try {
+      this.init(await openRoom(this.link.roomId));
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg === 'Accès retiré') return void useCollab.setState({ status: 'error', error: 'Votre accès à cette chorégraphie a été retiré.' });
+      return this.scheduleReconnect();
     }
+    if (this.closed) return;
+
+    const channel = c.sb.channel(`room:${this.link.roomId}`, { config: { private: true, broadcast: { self: false }, presence: { key: CLIENT_ID } } });
+    this.channel = channel;
+    channel
+      .on('broadcast', { event: 'ops' }, ({ payload }) => this.remoteOps(((payload as { ops?: Op[] }).ops ?? []) as Op[]))
+      .on('presence', { event: 'sync' }, () => this.syncPeers())
+      .subscribe((status) => {
+        if (this.channel !== channel || this.closed) return;
+        if (status === 'SUBSCRIBED') {
+          this.retry = 0;
+          this.online = true;
+          useCollab.setState({ status: 'online', error: undefined });
+          this.schedulePresence();
+          void this.sendPending();
+          // edits made between the snapshot and the subscription
+          openRoom(this.link.roomId)
+            .then((room) => this.channel === channel && this.init(room))
+            .catch(() => {});
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          this.channel = null;
+          void c.sb.removeChannel(channel);
+          this.scheduleReconnect();
+        }
+      });
+  }
+
+  private apply(entries: Iterable<Op>) {
+    const patch: Patch = {};
+    for (const op of entries) {
+      observe(op.t);
+      const mine = this.state.clock[op.k];
+      if (!mine || op.t > mine) {
+        this.state.clock[op.k] = op.t;
+        patch[op.k] = op.v;
+      }
+    }
+    if (Object.keys(patch).length) {
+      useEditor.getState().applyRemote(patch);
+      if ('music' in patch) this.checkMusic();
+      this.persist();
+    }
+  }
+
+  private init(room: RoomSnapshot) {
+    this.apply(Object.entries(room.entries).map(([k, e]) => ({ k, v: e.v, t: e.t })));
+    this.state.pending = this.state.pending.filter((op) => !room.entries[op.k] || op.t > room.entries[op.k].t);
+    if (room.role !== this.link.role) this.link = { ...this.link, role: room.role };
+    const readOnly = room.role === 'view';
+    if (useEditor.getState().readOnly !== readOnly) useEditor.setState({ readOnly });
+    useCollab.setState({ pending: this.state.pending.length });
+    this.persist();
+    this.checkMusic();
+  }
+
+  private remoteOps(ops: Op[]) {
+    this.apply(ops.filter((op) => op && typeof op.k === 'string' && typeof op.t === 'string'));
+  }
+
+  private syncPeers() {
+    const presence = this.channel?.presenceState<{ name?: string; color?: string; selected?: ID[]; time?: number }>() ?? {};
+    const peers: Record<string, Peer> = {};
+    for (const [key, metas] of Object.entries(presence)) {
+      const m = metas[metas.length - 1];
+      if (key === CLIENT_ID || !m) continue;
+      peers[key] = { clientId: key, name: String(m.name ?? 'Membre'), color: String(m.color ?? '#ff4d8d'), selected: Array.isArray(m.selected) ? m.selected : [], time: Number(m.time) || 0 };
+    }
+    useCollab.setState({ peers });
   }
 
   private checkMusic() {
     const hash = useEditor.getState().doc?.music.hash;
     if (!hash) return;
     this.onMusicHash(hash);
-    if (this.link.role === 'edit') ensureAudioUploaded(this.link, hash);
+    if (this.link.role === 'edit') void ensureAudioUploaded(this.link, hash);
   }
 
   private local(after: Patch) {
@@ -291,8 +376,8 @@ export class CollabSession {
       this.batch[k] = { k, v: after[k] ?? null, t };
     }
     if ('music' in after) {
-      const hash = (after.music as any)?.hash;
-      if (hash) ensureAudioUploaded(this.link, hash);
+      const hash = (after.music as { hash?: string } | null)?.hash;
+      if (hash) void ensureAudioUploaded(this.link, hash);
     }
     if (!this.flushTimer) this.flushTimer = setTimeout(() => this.flushBatch(), 60);
   }
@@ -306,28 +391,45 @@ export class CollabSession {
     this.state.pending = [...this.state.pending.filter((o) => !replaced.has(o.k)), ...ops];
     useCollab.setState({ pending: this.state.pending.length });
     this.persist();
-    this.sendPending();
+    void this.sendPending();
   }
 
-  private sendPending() {
-    const ws = this.ws;
-    if (!ws || ws.readyState !== WebSocket.OPEN || useCollab.getState().status !== 'online') return;
-    const flying = new Set([...this.inflight.values()].flat());
-    const ops = this.state.pending.filter((o) => !flying.has(o));
-    for (let i = 0; i < ops.length; i += 400) {
-      const chunk = ops.slice(i, i + 400);
-      const id = uid(6);
-      this.inflight.set(id, chunk);
-      ws.send(JSON.stringify({ type: 'ops', id, ops: chunk }));
+  /** Saves pending edits in the room, then shows them live to the others. */
+  private async sendPending() {
+    if (this.sending || !this.online || !this.sb) return;
+    this.sending = true;
+    let retryLater = false;
+    try {
+      while (this.state.pending.length && this.online && !this.closed) {
+        const chunk = this.state.pending.slice(0, CHUNK);
+        const { error } = await this.sb.rpc('room_push', { p_room: this.link.roomId, p_ops: chunk });
+        if (error) {
+          if (/read only|no access/i.test(error.message)) {
+            this.state.pending = [];
+            this.link = { ...this.link, role: 'view' };
+            useEditor.setState({ readOnly: true });
+            useCollab.setState({ pending: 0, status: 'error', error: 'Lecture seule : vos modifications ne sont pas partagées.' });
+            this.persist();
+          } else retryLater = true;
+          break;
+        }
+        const sent = new Set(chunk);
+        this.state.pending = this.state.pending.filter((o) => !sent.has(o));
+        useCollab.setState({ pending: this.state.pending.length });
+        this.persist();
+        void this.channel?.send({ type: 'broadcast', event: 'ops', payload: { ops: chunk } });
+      }
+    } finally {
+      this.sending = false;
     }
+    if (retryLater && !this.closed) setTimeout(() => void this.sendPending(), 3000);
   }
 
-  private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private persist() {
     if (this.persistTimer) return;
     this.persistTimer = setTimeout(() => {
       this.persistTimer = null;
-      db.setCollabState<Persisted>(this.choreoId, this.state);
+      void db.setCollabState<Persisted>(this.choreoId, this.state);
     }, 300);
   }
 
@@ -335,15 +437,10 @@ export class CollabSession {
     if (this.presenceTimer) return;
     this.presenceTimer = setTimeout(() => {
       this.presenceTimer = null;
+      if (!this.online || !this.channel) return;
       const { selected, time } = useEditor.getState();
-      if (this.ws?.readyState === WebSocket.OPEN)
-        this.ws.send(
-          JSON.stringify({
-            type: 'presence',
-            data: { name: displayName(), color: displayColor(), selected, time },
-          }),
-        );
-    }, 150);
+      void this.channel.track({ name: displayName(), color: displayColor(), selected, time });
+    }, 300);
   }
 }
 

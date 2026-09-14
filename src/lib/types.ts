@@ -110,6 +110,8 @@ export interface CollabLink {
   roomId: string;
   key: string;
   role: 'edit' | 'view';
+  /** Created the share: can remove people and change the links. */
+  owner?: boolean;
   editKey?: string;
   viewKey?: string;
 }

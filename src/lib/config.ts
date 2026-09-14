@@ -1,2 +1,4 @@
-/** Real-time collaboration needs the Node server; static builds (GitHub Pages) set VITE_COLLAB=off. */
-export const COLLAB_ENABLED = import.meta.env.VITE_COLLAB !== 'off';
+import cloud from './cloud.config.json';
+
+/** Shared choreographies (real-time collaboration) run on the account service: available wherever accounts are. */
+export const COLLAB_ENABLED = Boolean(cloud.url && cloud.key);

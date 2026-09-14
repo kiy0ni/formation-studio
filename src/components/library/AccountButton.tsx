@@ -62,7 +62,7 @@ function PasswordInput({ value, onChange, placeholder, isNew }: { value: string;
 
 type LoginView = 'in' | 'up' | 'forgot' | 'code';
 
-function LoginDialog({ onClose }: { onClose: () => void }) {
+export function LoginDialog({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<LoginView>('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

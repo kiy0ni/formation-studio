@@ -353,6 +353,14 @@ async function prefetchAudio(sb: SupabaseClient, docs: Choreo[]) {
   }
 }
 
+/** Signed-in client for features that need an account (shared choreographies). */
+export async function cloudSession(): Promise<{ sb: SupabaseClient; userId: string; email: string } | null> {
+  if (!CLOUD_ENABLED) return null;
+  await ready;
+  if (!session) return null;
+  return { sb: await client(), userId: session.user.id, email: session.user.email ?? '' };
+}
+
 /** Music missing on this device (editor): fetch it from the account. */
 export async function fetchCloudAudio(hash: string): Promise<Blob | null> {
   if (!CLOUD_ENABLED) return null;

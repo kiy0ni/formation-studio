@@ -4735,3 +4735,48 @@ input[type='checkbox'].switch {
 .install-simple .hint {
   margin: 0;
 }
+
+/* shared choreography */
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.share-row .share-qr {
+  margin-top: 10px;
+  width: min(200px, 60vw);
+}
+.member-list {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  min-height: 44px;
+}
+.member-row:last-child {
+  border-bottom: 0;
+}
+.share-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.share-points li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

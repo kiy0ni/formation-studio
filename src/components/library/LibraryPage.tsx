@@ -2,7 +2,6 @@ import { produce } from 'immer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { importBackup, isBackup } from '../../lib/backup';
 import { FOLDER_COLORS } from '../../lib/colors';
-import { COLLAB_ENABLED } from '../../lib/config';
 import { db } from '../../lib/db';
 import { exportJson, importJson } from '../../lib/exporters';
 import { uid } from '../../lib/id';
@@ -22,7 +21,6 @@ import { InstallButton } from './InstallButton';
 import { NewChoreoFlow } from './NewChoreoFlow';
 import { AccountButton } from './AccountButton';
 import { ShareAppDialog } from './ShareAppDialog';
-import { ProfileButton } from './ProfileButton';
 import { TeamsView } from './TeamsView';
 import { TransferDialog } from './TransferDialog';
 
@@ -172,7 +170,6 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
           <InstallButton />
           <AccountButton />
           {shareApp && <ShareAppDialog onClose={() => setShareApp(false)} />}
-          {COLLAB_ENABLED && <ProfileButton />}
           <Menu trigger={<button className="icon-btn" aria-label="Plus"><Icon name="dots" size={20} /></button>}>
             {(close) => (
               <>

@@ -53,6 +53,13 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
   0 9 * * * curl -fsS -X POST "https://tjowfhkiioppzyfwlrqw.supabase.co/rest/v1/rpc/keepalive" -H "apikey: sb_publishable_2XLACOdpzS8jbDjeD1dCuQ_ZB0DL-M3" -H "content-type: application/json" -d "{}" > /dev/null
   ```
 
+## Chorégraphies partagées (collaboration en temps réel)
+
+- Dans l'éditeur : **Partager** → **Activer le partage**. Lien *lecture seule* pour les danseurs, lien *éditeur* pour co-éditer. Compte obligatoire pour ouvrir un lien.
+- Fonctionne sur Supabase (même projet que les comptes), sans serveur : tables `rooms` / `room_members`, fonctions `create_room`, `join_room`, `room_open`, `room_push`, `rotate_room_codes`, canal temps réel privé `room:<id>` protégé par RLS, musique dans le bucket `room-audio` (voir `supabase/schema.sql`).
+- Limites gratuites Supabase Realtime : 200 connexions simultanées, 2 millions de messages par mois.
+- `server/index.js` (ancien serveur WebSocket) n'est plus utilisé par l'app.
+
 ## iPhone
 
 - Le plus simple : Safari → le site → Partager → « Sur l’écran d’accueil » (gratuit, permanent, même compte).

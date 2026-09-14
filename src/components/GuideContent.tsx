@@ -196,6 +196,26 @@ const SECTIONS: GuideSection[] = [
     ),
   },
   {
+    id: 'share',
+    icon: 'users',
+    title: 'Travailler à plusieurs',
+    intro: 'Prof, chorégraphes, danseurs.',
+    body: (
+      <ul>
+        <li>
+          Dans une chorégraphie : <B>Partager</B> (téléphone : <B>Plus → Partager en direct</B>) → <B>Activer le partage</B>.
+        </li>
+        <li>
+          Lien <B>lecture seule</B> pour les danseurs, lien <B>éditeur</B> pour modifier ensemble. Copier, envoyer ou QR code.
+        </li>
+        <li>Chacun ouvre le lien et se connecte (compte gratuit). Tout se met à jour en direct, musique comprise.</li>
+        <li>
+          Le créateur voit les membres, peut retirer un accès ou créer de <B>nouveaux liens</B>.
+        </li>
+      </ul>
+    ),
+  },
+  {
     id: 'export',
     icon: 'download',
     title: 'Exporter',
