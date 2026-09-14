@@ -12,6 +12,7 @@ import { notify } from '../common/Toast';
 import { IconButton, Menu, MenuItem, Modal, Segmented } from '../common/ui';
 import { ShareDialog } from './ShareDialog';
 import { stageSvg } from './Stage2D';
+import { VideoExportDialog } from './VideoExportDialog';
 
 export function TopBar() {
   const name = useEditor((s) => s.doc!.name);
@@ -27,6 +28,7 @@ export function TopBar() {
   const collisions = useCollisions();
   const [share, setShare] = useState(false);
   const [help, setHelp] = useState(false);
+  const [video, setVideo] = useState(false);
   const [draftName, setDraftName] = useState<string | null>(null);
 
   return (
@@ -97,6 +99,9 @@ export function TopBar() {
         <Menu trigger={<IconButton icon="download" title="Exporter" />}>
           {(close) => (
             <>
+              <MenuItem icon="video" onClick={() => (close(), setVideo(true))}>
+                Vidéo (MP4) avec la musique
+              </MenuItem>
               <MenuItem
                 icon="image"
                 onClick={() => {
@@ -127,6 +132,7 @@ export function TopBar() {
 
       {share && <ShareDialog onClose={() => setShare(false)} />}
       {help && <ShortcutsDialog onClose={() => setHelp(false)} />}
+      {video && <VideoExportDialog onClose={() => setVideo(false)} />}
     </header>
   );
 }

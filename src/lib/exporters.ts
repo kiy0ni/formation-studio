@@ -12,7 +12,7 @@ export function download(name: string, blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-const safe = (s: string) => s.replace(/[^\p{L}\p{N}\-_ ]+/gu, '').trim().replace(/\s+/g, '-') || 'choregraphie';
+export const safe = (s: string) => s.replace(/[^\p{L}\p{N}\-_ ]+/gu, '').trim().replace(/\s+/g, '-') || 'choregraphie';
 
 export function exportJson(doc: Choreo) {
   const { collab: _c, ...rest } = doc;

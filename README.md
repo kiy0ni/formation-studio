@@ -61,6 +61,7 @@ npm run lan        # accessible depuis les téléphones du même réseau Wi-Fi
 - Notes par formation, commentaire par position.
 - Annuler / rétablir illimité (300 étapes).
 - Export PNG, JSON, impression / PDF avec fiches individuelles par danseur.
+- **Export vidéo MP4 avec la musique** (menu Exporter → Vidéo) : 16:9, 1:1 ou 9:16 (Reels, TikTok), 720p ou 1080p, toute la chorégraphie ou la formation courante, vue public ou miroir, noms, trajets, comptes et notes. Option « vidéo d'entraînement » qui met en avant le parcours d'un membre. Encodage dans le navigateur (plus rapide que la lecture), sans serveur ; partage direct sur mobile.
 
 **Collaboration**
 - « Partager » crée un lien éditeur et un lien lecture seule.

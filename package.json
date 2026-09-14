@@ -18,8 +18,10 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@mediabunny/aac-encoder": "^1.56.2",
     "idb-keyval": "^6.3.0",
     "immer": "^11.1.18",
+    "mediabunny": "^1.56.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "three": "^0.186.0",
