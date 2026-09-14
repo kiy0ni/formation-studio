@@ -127,6 +127,10 @@ const cache = new WeakMap<Analysis, { target: number; pieces: Piece[]; tracking:
 
 /* ------------------------------------------------------------------------ */
 
+/** Doubt zone around a predicted position (m, growing with the time since the last image): another person inside it ends the sure stretch. */
+const MARGIN_BASE = 0.12;
+const MARGIN_PER_S = 0.9;
+
 function buildPieces(an: Analysis, floor: FloorModel): Piece[] {
   const n = an.times.length;
   const fps = an.fps;
@@ -192,7 +196,7 @@ function buildPieces(an: Analysis, floor: FloorModel): Piece[] {
       usedE.add(e.k);
       const t = active[a];
       // close images (extra ones around a crossing) make the prediction precise: a smaller doubt zone
-      const margin = Math.max(0.12 + 0.9 * (times[i] - times[t.last]), dist * 1.6);
+      const margin = Math.max(MARGIN_BASE + MARGIN_PER_S * (times[i] - times[t.last]), dist * 1.6);
       const unsure =
         dets.some((o) => o !== e && Math.hypot(o.p.x - expected[a].x, o.p.y - expected[a].y) < margin) ||
         expected.some((o, b) => b !== a && Math.hypot(e.p.x - o.x, e.p.y - o.y) < margin);

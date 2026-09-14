@@ -2,7 +2,6 @@ import { createStore, del, get, keys, set } from 'idb-keyval';
 import { db } from '../lib/db';
 import type { ID } from '../lib/types';
 import { loadDetector } from './detector';
-import { crossingBetween } from './crossing';
 import { medianBackground, signature, type Background } from './signature';
 
 /** A person seen on one analysed image (fractions of the image) with the colors of their clothes. */
@@ -66,8 +65,6 @@ export interface Analysis {
   createdAt: number;
   /** Images still to analyse (analysis interrupted: the tab was closed): resumes from here. */
   next?: number;
-  /** While running: extra images looked at around crossings, merged into `times`/`frames` at the end. */
-  extra?: { t: number; dets: Det[] }[];
 }
 
 /** What one choreography made of the analysis (its own stage, dancers and colors). */
@@ -76,7 +73,7 @@ export interface Applied {
   ghosts: Ghosts;
 }
 
-/** 6: extra images around crossings (times are no longer evenly spaced). Older analyses are run again. */
+/** 6: image times carried explicitly (downstream code never assumes even spacing). Older analyses are run again. */
 const VERSION = 6;
 /** Images analysed per second of video: quick, or precise (crossings followed more closely). */
 export const PRECISION = { fast: 3, precise: 5 } as const;
@@ -196,41 +193,22 @@ export async function runAnalysis(hash: string, onProgress: (p: Progress) => voi
     thumb.height = Math.round(height * 0.375);
     const thumbCtx = thumb.getContext('2d')!;
 
-    const analysis: Analysis = resume ?? { version: VERSION, hash, fps, duration, width, height, times, frames: [], thumbs: [], createdAt: Date.now(), next: 0, extra: [] };
+    const analysis: Analysis = resume ?? { version: VERSION, hash, fps, duration, width, height, times, frames: [], thumbs: [], createdAt: Date.now(), next: 0 };
     const frames = analysis.frames;
-    const extra = (analysis.extra ??= []);
-    // thumbnails by time, numbered once every image is known
-    const thumbsAt: { t: number; url: string }[] = analysis.thumbs.map((th) => ({ t: times[th.index], url: th.url }));
+    const thumbs = analysis.thumbs;
     const thumbEvery = Math.round(fps * THUMB_EVERY_S);
     const from = analysis.next ?? 0;
     const started = performance.now();
     onProgress({ label: from ? 'Analyse… reprise' : 'Analyse…', ratio: from / Math.max(1, times.length) });
-    // images to look at: the regular grid, plus a few more between two images when people cross
-    const queue: { t: number; base: number }[] = [];
-    let nextBase = from;
-    const kinds: { t: number; base: number }[] = [];
-    const source = (function* () {
-      for (;;) {
-        const k = queue.length ? queue.shift()! : nextBase < times.length ? { t: times[nextBase], base: nextBase++ } : null;
-        if (!k) return;
-        kinds.push(k);
-        yield k.t;
-      }
-    })();
     let i = from;
-    let previousBoxes: { x: number; y: number; w: number; h: number }[] | null = null;
-    let previousTime = from > 0 ? times[from - 1] : -1;
-    for await (const wrapped of sink.canvasesAtTimestamps(source)) {
-      const kind = kinds.shift()!;
-      const isBase = kind.base >= 0;
+    for await (const wrapped of sink.canvasesAtTimestamps(times.slice(from))) {
       if (signal.aborted) {
-        analysis.next = isBase ? kind.base : i;
+        analysis.next = i;
         await saveAnalysis(analysis);
         throw cancelled();
       }
-      if (!wrapped) {
-        if (isBase) frames[i] = [];
-      } else {
+      if (!wrapped) frames[i] = [];
+      else {
         ctx.drawImage(wrapped.canvas, 0, 0, width, height);
         const boxes = detector.detect(canvas);
         // only the part of the image where people stand is read back (the whole image is 1.6 MB each time)
@@ -244,23 +222,12 @@ export async function runAnalysis(hash: string, onProgress: (p: Progress) => voi
           pixels = ctx.getImageData(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
           view = { x: x0, y: y0, width, height };
         }
-        const dets = boxes.map((b) => ({ x: r4(b.x), y: r4(b.y), w: r4(b.w), h: r4(b.h), s: r4(b.score), sig: signature(pixels!, b, room, view) }));
-        if (isBase) {
-          frames[i] = dets;
-          if (i % thumbEvery === 0) {
-            thumbCtx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
-            thumbsAt.push({ t: kind.t, url: thumb.toDataURL('image/jpeg', 0.6) });
-          }
-          // people crossing since the previous image: three more images in between, to follow them closely
-          const strong = dets.filter((d) => d.s >= 0.3);
-          if (previousBoxes && kind.t - previousTime > 0.1 && crossingBetween(previousBoxes, strong)) {
-            for (let k = 1; k <= 3; k++) queue.push({ t: Math.round((previousTime + ((kind.t - previousTime) * k) / 4) * 1000) / 1000, base: -1 });
-          }
-          previousBoxes = strong;
-          previousTime = kind.t;
-        } else extra.push({ t: kind.t, dets });
+        frames[i] = boxes.map((b) => ({ x: r4(b.x), y: r4(b.y), w: r4(b.w), h: r4(b.h), s: r4(b.score), sig: signature(pixels!, b, room, view) }));
+        if (i % thumbEvery === 0) {
+          thumbCtx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
+          thumbs.push({ index: i, url: thumb.toDataURL('image/jpeg', 0.6) });
+        }
       }
-      if (!isBase) continue;
       i++;
       const ratio = i / times.length;
       const elapsed = (performance.now() - started) / 1000;
@@ -274,16 +241,7 @@ export async function runAnalysis(hash: string, onProgress: (p: Progress) => voi
       if (i % 2 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
     }
     while (frames.length < times.length) frames.push([]);
-    // one list of images in time order: the regular grid and the extra ones around crossings
-    const all = times.map((t, k) => ({ t, dets: frames[k] })).concat(extra).sort((a, b) => a.t - b.t);
-    analysis.times = all.map((f) => f.t);
-    analysis.frames = all.map((f) => f.dets);
-    analysis.thumbs = thumbsAt
-      .map((th) => ({ index: analysis.times.findIndex((t) => Math.abs(t - th.t) < 1e-6), url: th.url }))
-      .filter((th) => th.index >= 0)
-      .sort((a, b) => a.index - b.index);
     delete analysis.next;
-    delete analysis.extra;
     analysis.createdAt = Date.now();
     await saveAnalysis(analysis);
     return analysis;

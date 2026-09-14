@@ -155,14 +155,3 @@ test('floor: further away means smaller, positions come back in meters', () => {
   const far = toFloor(floor, dets[0]);
   assert.ok(near.y > far.y, 'closer to the camera = larger y');
 });
-
-test('crossings: noticed when two people come together or part', async () => {
-  const { crossingBetween } = await import('../src/detect/crossing');
-  const box = (cx: number) => ({ x: cx - 0.075, y: 0.4, w: 0.15, h: 0.4 });
-  const apart = [box(0.2), box(0.6)];
-  const together = [box(0.35), box(0.45)];
-  assert.equal(crossingBetween(apart, together), true);
-  assert.equal(crossingBetween(together, apart), true);
-  assert.equal(crossingBetween(apart, [box(0.22), box(0.58)]), false);
-  assert.equal(crossingBetween([box(0.5)], together), false);
-});
