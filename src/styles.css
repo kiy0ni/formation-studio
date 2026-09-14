@@ -4521,7 +4521,7 @@ input[type='checkbox'].switch {
   .lib-actions {
     gap: 0;
   }
-  .lib-actions .btn:not(.new-btn) {
+  .lib-actions > .btn:not(.new-btn) {
     padding: 8px;
     font-size: 0;
     gap: 0;
