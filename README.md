@@ -28,7 +28,7 @@ Les apps sont distribuées hors des stores, sans certificat payant : un avertiss
 
 ## Adresse
 
-Le dépôt s'appelle **kiy0ni/lineup** (anciennement `formation-studio`). Le site est sur **https://kiy0ni.github.io/lineup/**. L'ancienne adresse `https://kiy0ni.github.io/formation-studio/` (apps installées, QR des premières affiches, liens de partage déjà envoyés) renvoie vers la nouvelle grâce au dépôt `kiy0ni/kiy0ni.github.io` (page de redirection qui garde le lien de partage `#/join/…`). Ne pas recréer de dépôt nommé `formation-studio` : GitHub cesserait de rediriger les anciens liens de téléchargement vers `lineup`.
+Le dépôt s'appelle **kiy0ni/lineup** (anciennement `formation-studio`). Le site est sur **https://kiy0ni.github.io/lineup/**. L'ancienne adresse `https://kiy0ni.github.io/formation-studio/` (apps installées, QR des premières affiches, liens de partage déjà envoyés) reste servie par le dépôt `kiy0ni/kiy0ni.github.io`, où `npm run deploy` publie aussi une copie de l'app. Un onglet de navigateur y part tout de suite vers `/lineup/` en gardant le lien (`#/join/…`) : même site, donc mêmes projets. Une app installée depuis l'ancienne adresse (écran d'accueil iPhone, Dock de Safari) garde ses projets à part : elle reste ouverte et explique comment les enregistrer puis les *Recevoir* à la nouvelle adresse. Ne pas recréer de dépôt nommé `formation-studio` : GitHub cesserait de rediriger les anciens liens de téléchargement vers `lineup`.
 
 ## Installer l'app (Mac, Android, iPhone)
 

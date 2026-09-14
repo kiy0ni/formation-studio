@@ -3,15 +3,18 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { startCloud } from './lib/cloud';
 import './lib/install';
+import { LEAVING } from './lib/moved';
 import { IS_ANDROID_APP, IS_NATIVE_APP } from './lib/platform';
 import { useEditor } from './store/editor';
 import './styles.css';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// (an old-address tab is on its way to the new one)
+if (!LEAVING)
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
 
 // App-like behaviour on phones: the page itself never zooms (iOS ignores user-scalable=no).
 // Pinch on the stage still works: the stage handles it itself.
@@ -62,7 +65,7 @@ if (IS_ANDROID_APP) {
 }
 
 // the installed apps ship their files: the offline service worker is only for the website
-if (import.meta.env.PROD && !IS_NATIVE_APP && 'serviceWorker' in navigator) {
+if (import.meta.env.PROD && !IS_NATIVE_APP && !LEAVING && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });

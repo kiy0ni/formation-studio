@@ -2841,6 +2841,23 @@ kbd {
 .update-notice > svg {
   color: var(--accent);
 }
+.moved-pill {
+  color: inherit;
+  font: inherit;
+  padding-right: 14px;
+  cursor: pointer;
+}
+.moved-steps {
+  margin: 14px 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 16px;
+}
+.moved-steps .btn {
+  display: flex;
+  width: fit-content;
+  margin-top: 8px;
+}
 @media (max-width: 860px), (max-height: 500px) {
   .download-grid {
     grid-template-columns: 1fr;

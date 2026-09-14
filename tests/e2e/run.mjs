@@ -15,6 +15,7 @@ const scratch = mkdtempSync(join(tmpdir(), 'lineup-e2e-'));
 
 execSync('npx vite build', { cwd: root, stdio: 'inherit' });
 cpSync(join(root, 'dist'), join(scratch, 'srv', 'lineup'), { recursive: true });
+cpSync(join(root, 'dist'), join(scratch, 'srv', 'formation-studio'), { recursive: true }); // old address
 const server = spawn('python3', ['-m', 'http.server', '8811', '--bind', '127.0.0.1'], { cwd: join(scratch, 'srv'), stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 800));
 

@@ -1,5 +1,7 @@
 // Offline support. The cache name and precache list below are filled in at build time (vite.config.ts).
-const CACHE = 'formation-studio-__BUILD__';
+// named after its own address: the copy still served at the old address (/formation-studio/) must not delete this one's files, nor the reverse
+const PREFIX = `lineup:${new URL(self.registration.scope).pathname}:`;
+const CACHE = PREFIX + '__BUILD__';
 const PRECACHE = "__PRECACHE__";
 const url = (path) => new URL(path, self.registration.scope).href;
 const SHELL = ['./', 'index.html', 'icon.svg', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png'];
@@ -19,7 +21,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k.startsWith('formation-studio-') && k !== CACHE).map((k) => caches.delete(k)));
+      await Promise.all(keys.filter((k) => (k.startsWith(PREFIX) && k !== CACHE) || k.startsWith('formation-studio-')).map((k) => caches.delete(k)));
       await self.clients.claim();
     })(),
   );

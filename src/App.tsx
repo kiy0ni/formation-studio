@@ -3,6 +3,7 @@ import { Toast } from './components/common/Toast';
 import { EditorPage } from './components/editor/EditorPage';
 import { JoinPage } from './components/library/JoinPage';
 import { LibraryPage } from './components/library/LibraryPage';
+import { MovedNotice } from './components/MovedNotice';
 import { PrintPage } from './components/PrintPage';
 import { UpdateNotice } from './components/UpdateNotice';
 import { parseRoute, useHash } from './lib/router';
@@ -18,6 +19,7 @@ export default function App() {
       {route.name === 'print' && <PrintPage id={route.id} />}
       <Toast />
       <UpdateNotice />
+      <MovedNotice />
     </>
   );
 }
