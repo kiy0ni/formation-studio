@@ -34,6 +34,10 @@ export interface ReviewSettings {
   sensitivity: number;
   mapping: (ID | null)[];
   mode: 'all' | 'positions' | 'timings';
+  /** Positions put on the stage marks. */
+  grid?: boolean;
+  /** Routes and start times during transitions taken from the video. */
+  paths?: boolean;
   snap: boolean;
   recenter: boolean;
   transform: { flip: boolean; spread: number; depth: number; ox: number; oy: number; s: number };
@@ -62,10 +66,11 @@ export interface Analysis {
   ghosts?: Ghosts;
 }
 
-/** 2: looks measured on the dancers only (room subtracted). Older analyses are run again. */
-const VERSION = 2;
-/** Images analysed per second of video. */
-export const FPS = 3;
+/** 4: looks measured on the dancers only (room subtracted), 7 body parts. Older analyses are run again. */
+const VERSION = 4;
+/** Images analysed per second of video: quick, or precise (crossings followed more closely). */
+export const PRECISION = { fast: 3, precise: 5 } as const;
+export type Precision = keyof typeof PRECISION;
 const KEYFRAME_EVERY = 2;
 
 /** Results stay on the device, one per video. */
@@ -98,7 +103,7 @@ function formatLeft(seconds: number) {
 }
 
 /** Looks for the dancers on every analysed image of the reference video. */
-export async function runAnalysis(hash: string, onProgress: (p: Progress) => void, signal: AbortSignal): Promise<Analysis> {
+export async function runAnalysis(hash: string, onProgress: (p: Progress) => void, signal: AbortSignal, fps: number = PRECISION.precise): Promise<Analysis> {
   const blob = await db.getVideo(hash);
   if (!blob) throw new Error('Vidéo absente sur cet appareil.');
   onProgress({ label: 'Chargement de la détection…' });
@@ -111,7 +116,7 @@ export async function runAnalysis(hash: string, onProgress: (p: Progress) => voi
   const sink = new mb.CanvasSink(track, { width, height, fit: 'fill', poolSize: 1 });
 
   const times: number[] = [];
-  for (let t = 0.05; t < duration - 0.05; t += 1 / FPS) times.push(Math.round(t * 1000) / 1000);
+  for (let t = 0.05; t < duration - 0.05; t += 1 / fps) times.push(Math.round(t * 1000) / 1000);
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -141,7 +146,7 @@ export async function runAnalysis(hash: string, onProgress: (p: Progress) => voi
 
   const frames: Det[][] = [];
   const keyframes: Keyframe[] = [];
-  const keyEvery = Math.round(FPS * KEYFRAME_EVERY);
+  const keyEvery = Math.round(fps * KEYFRAME_EVERY);
   const started = performance.now();
   onProgress({ label: 'Analyse…', ratio: 0 });
   for await (const wrapped of sink.canvasesAtTimestamps(times)) {
@@ -167,7 +172,7 @@ export async function runAnalysis(hash: string, onProgress: (p: Progress) => voi
   }
   while (frames.length < times.length) frames.push([]);
 
-  const analysis: Analysis = { version: VERSION, hash, fps: FPS, duration, width, height, times, frames, keyframes, createdAt: Date.now() };
+  const analysis: Analysis = { version: VERSION, hash, fps, duration, width, height, times, frames, keyframes, createdAt: Date.now() };
   await saveAnalysis(analysis);
   return analysis;
 }

@@ -33,7 +33,7 @@ writeFileSync(
 // icon sizes for the Windows .exe (see native/electron/after-pack.cjs)
 const sizes = join(root, 'native/electron/icon-sizes');
 mkdirSync(sizes, { recursive: true });
-for (const s of [16, 24, 32, 48, 64, 128, 256]) execSync(`sips -z ${s} ${s} native/icons/app-icon.png --out "${join(sizes, `icon-${s}.png`)}"`, { cwd: root, stdio: 'ignore' });
+if (process.platform === 'darwin') for (const s of [16, 24, 32, 48, 64, 128, 256]) execSync(`sips -z ${s} ${s} native/icons/app-icon.png --out "${join(sizes, `icon-${s}.png`)}"`, { cwd: root, stdio: 'ignore' });
 
 console.log('\n▶ Création des installeurs');
 rmSync(join(root, 'native/electron/out'), { recursive: true, force: true });

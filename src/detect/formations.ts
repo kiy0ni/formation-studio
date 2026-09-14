@@ -1,7 +1,7 @@
 import { r2 } from '../lib/geometry';
 import { uid } from '../lib/id';
 import { clampToStage, computeFrame, snapTime, sortedDancers, sortedFormations, timeline } from '../lib/model';
-import type { Choreo, Dancer, ID, Position, StageSettings, Vec } from '../lib/types';
+import type { Choreo, Dancer, ID, PathSpec, Position, StageSettings, Vec } from '../lib/types';
 import type { Analysis, Ghosts, ReviewSettings, Swap } from './analysis';
 import { median, percentile } from './floor';
 import type { Track } from './track';
@@ -10,7 +10,8 @@ export type Placement = ReviewSettings['placement'];
 export type Transform = ReviewSettings['transform'];
 export type ApplyMode = ReviewSettings['mode'];
 
-export const DEFAULT_PLACEMENT: Placement = { flip: false, spread: 1, depth: 1, fill: true };
+/** Real distances (meters), the group's usual middle on the middle of the stage. */
+export const DEFAULT_PLACEMENT: Placement = { flip: false, spread: 1, depth: 1, fill: false };
 
 /** Positions on the stage (meters, same axes as the editor) over time. */
 export interface Placed {
@@ -53,26 +54,42 @@ export function applySwaps(tracks: Track[], swaps: Swap[]): Track[] {
   return out;
 }
 
-/** Puts the group in the middle of the stage, at the chosen size. */
+/**
+ * Puts the group on the stage: the middle of the group (where it usually stands) on the middle of the stage,
+ * real distances, made smaller only when it would not fit ("fill": made as big as the stage allows).
+ */
 export function placeTracks(tracks: Track[], stage: StageSettings, placement: Placement): { tracks: Placed[]; transform: Transform } {
   const transform: Transform = { flip: placement.flip, spread: placement.spread, depth: placement.depth, ox: 0, oy: 0, s: 1 };
+  const n = tracks[0]?.xs.length ?? 0;
   const xs: number[] = [];
   const ys: number[] = [];
-  for (const t of tracks)
-    for (let i = 0; i < t.xs.length; i++) {
+  const middleX: number[] = [];
+  const middleY: number[] = [];
+  const enough = Math.max(1, Math.ceil(tracks.length / 2));
+  for (let i = 0; i < n; i++) {
+    let sx = 0;
+    let sy = 0;
+    let count = 0;
+    for (const t of tracks) {
       if (!t.seen[i]) continue;
       const p = applyTransform(transform, { x: t.xs[i], y: t.ys[i] });
       xs.push(p.x);
       ys.push(p.y);
+      sx += p.x;
+      sy += p.y;
+      count++;
     }
+    if (count >= enough) {
+      middleX.push(sx / count);
+      middleY.push(sy / count);
+    }
+  }
   if (xs.length) {
-    const x0 = percentile(xs, 0.03);
-    const x1 = percentile(xs, 0.97);
-    const y0 = percentile(ys, 0.03);
-    const y1 = percentile(ys, 0.97);
-    transform.ox = (x0 + x1) / 2;
-    transform.oy = (y0 + y1) / 2;
-    const fit = Math.min((stage.width * 0.85) / Math.max(0.5, x1 - x0), (stage.depth * 0.8) / Math.max(0.5, y1 - y0));
+    transform.ox = middleX.length ? median(middleX) : (percentile(xs, 0.03) + percentile(xs, 0.97)) / 2;
+    transform.oy = middleY.length ? median(middleY) : (percentile(ys, 0.03) + percentile(ys, 0.97)) / 2;
+    const halfW = Math.max(0.25, Math.abs(percentile(xs, 0.03) - transform.ox), Math.abs(percentile(xs, 0.97) - transform.ox));
+    const halfD = Math.max(0.25, Math.abs(percentile(ys, 0.03) - transform.oy), Math.abs(percentile(ys, 0.97) - transform.oy));
+    const fit = Math.min((stage.width / 2) * 0.92 / halfW, (stage.depth / 2) * 0.92 / halfD);
     transform.s = placement.fill ? Math.max(0.3, Math.min(2.5, fit)) : Math.min(1, fit);
   }
   return {
@@ -190,8 +207,9 @@ export function findFormations(tracks: Placed[], times: number[], fps: number, s
     let calmest = -1;
     for (let i = a + edge; i <= b - edge; i++) if (calmest < 0 || speed[i] < speed[calmest]) calmest = i;
     if (calmest < 0) return;
-    const lo = Math.max(a, calmest - 1);
-    const hi = Math.min(b, calmest + 1);
+    const half = Math.max(1, Math.round(fps * 0.3));
+    const lo = Math.max(a, calmest - half);
+    const hi = Math.min(b, calmest + half);
     between(a, lo - 1);
     out.push({ ranges: [[lo, hi]], positions: positionsOver(tracks, [[lo, hi]]) });
     between(hi + 1, b);
@@ -211,7 +229,10 @@ export function defaultMapping(positions: Vec[], dancers: { id: ID; x: number }[
   const people = positions.map((p, k) => ({ k, x: p.x })).sort((a, b) => a.x - b.x);
   const ds = [...dancers].sort((a, b) => a.x - b.x);
   const out: (ID | null)[] = positions.map(() => null);
-  const pairs = people.length >= ds.length ? orderedMatch(people.map((p) => p.x), ds.map((d) => d.x)).map(([i, j]) => [i, j]) : orderedMatch(ds.map((d) => d.x), people.map((p) => p.x)).map(([j, i]) => [i, j]);
+  const pairs =
+    people.length >= ds.length
+      ? orderedMatch(people.map((p) => p.x), ds.map((d) => d.x))
+      : orderedMatch(ds.map((d) => d.x), people.map((p) => p.x)).map(([j, i]) => [i, j] as [number, number]);
   for (const [i, j] of pairs) out[people[i].k] = ds[j].id;
   return out;
 }
@@ -239,8 +260,26 @@ function orderedMatch(long: number[], short: number[]): [number, number][] {
   return pairs.reverse();
 }
 
+/** Stage marks: each position goes on the nearest grid point, unless another dancer already stands there. */
+export function alignToGrid(points: Vec[], stage: StageSettings): Vec[] {
+  const step = stage.gridStep > 0 ? stage.gridStep : 0.5;
+  const snapped = points.map((p) => ({ x: r2(Math.round(p.x / step) * step), y: r2(Math.round(p.y / step) * step) }));
+  const order = points.map((_, k) => k).sort((a, b) => Math.hypot(points[a].x - snapped[a].x, points[a].y - snapped[a].y) - Math.hypot(points[b].x - snapped[b].x, points[b].y - snapped[b].y));
+  const out: Vec[] = points.map((p) => ({ x: r2(p.x), y: r2(p.y) }));
+  const used: Vec[] = [];
+  for (const k of order) {
+    if (used.some((u) => Math.hypot(u.x - snapped[k].x, u.y - snapped[k].y) < step * 0.6)) {
+      used.push(out[k]);
+      continue;
+    }
+    out[k] = snapped[k];
+    used.push(snapped[k]);
+  }
+  return out;
+}
+
 /** Positions of the chosen dancers; when fewer dancers than people, the kept ones can move back to the middle. */
-function dancerPositions(positions: Vec[], mapping: (ID | null)[], recenter: boolean): Map<ID, Vec> {
+function dancerPositions(positions: Vec[], mapping: (ID | null)[], recenter: boolean, grid: boolean, stage: StageSettings): Map<ID, Vec> {
   const mine = positions.map((p, k) => ({ p, id: mapping[k] })).filter((e): e is { p: Vec; id: ID } => !!e.id);
   let dx = 0;
   if (recenter && mine.length && mine.length < positions.length) {
@@ -248,7 +287,9 @@ function dancerPositions(positions: Vec[], mapping: (ID | null)[], recenter: boo
     const kept = mine.reduce((s, e) => s + e.p.x, 0) / mine.length;
     dx = all - kept;
   }
-  return new Map(mine.map((e) => [e.id, { x: e.p.x + dx, y: e.p.y }]));
+  const moved = mine.map((e) => clampToStage({ x: e.p.x + dx, y: e.p.y }, stage));
+  const final = grid ? alignToGrid(moved, stage) : moved.map((p) => ({ x: r2(p.x), y: r2(p.y) }));
+  return new Map(mine.map((e, k) => [e.id, final[k]]));
 }
 
 const keepExtras = (old: Position | undefined): Partial<Position> => {
@@ -258,10 +299,77 @@ const keepExtras = (old: Position | undefined): Partial<Position> => {
   return extra;
 };
 
-const onStage = (p: Vec, stage: StageSettings) => {
-  const c = clampToStage(p, stage);
-  return { x: r2(c.x), y: r2(c.y) };
-};
+function segmentDistance(p: Vec, a: Vec, b: Vec) {
+  const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+  if (!l2) return Math.hypot(p.x - a.x, p.y - a.y);
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2));
+  return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
+}
+
+/** Keeps the main turns of a route. */
+function simplify(points: Vec[], tolerance: number): Vec[] {
+  if (points.length < 3) return points;
+  let far = -1;
+  let max = 0;
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = segmentDistance(points[i], points[0], points[points.length - 1]);
+    if (d > max) {
+      max = d;
+      far = i;
+    }
+  }
+  if (max < tolerance) return [points[0], points[points.length - 1]];
+  return [...simplify(points.slice(0, far + 1), tolerance).slice(0, -1), ...simplify(points.slice(far), tolerance)];
+}
+
+/**
+ * How a dancer goes from one formation to the next, as seen in the video: when they leave and arrive
+ * (share of the transition) and the turns of their route.
+ */
+export function routeFrom(track: Placed, from: number, to: number, start: Vec, end: Vec, stage: StageSettings): Pick<Position, 'path' | 'timing'> {
+  const total = to - from;
+  if (total < 2) return {};
+  const a0 = { x: track.xs[from], y: track.ys[from] };
+  const b0 = { x: track.xs[to], y: track.ys[to] };
+  // the route bent so that it starts and ends exactly on the formations' positions
+  const points: Vec[] = [];
+  for (let i = from; i <= to; i++) {
+    const u = (i - from) / total;
+    points.push({ x: track.xs[i] + (start.x - a0.x) * (1 - u) + (end.x - b0.x) * u, y: track.ys[i] + (start.y - a0.y) * (1 - u) + (end.y - b0.y) * u });
+  }
+  let leave = 0;
+  while (leave < total && Math.hypot(points[leave].x - start.x, points[leave].y - start.y) < 0.2) leave++;
+  let arrive = total;
+  while (arrive > leave && Math.hypot(points[arrive].x - end.x, points[arrive].y - end.y) < 0.2) arrive--;
+  if (arrive <= leave || Math.hypot(end.x - start.x, end.y - start.y) < 0.15) return {};
+  const out: Pick<Position, 'path' | 'timing'> = {};
+  const s = Math.max(0, (leave - 1) / total);
+  const e = Math.min(1, (arrive + 1) / total);
+  if ((s > 0.05 || e < 0.95) && e - s >= 0.15) out.timing = { start: r2(s), end: r2(e) };
+  // a route only when the dancer was really seen moving, and it looks like a real walk (no zigzag from mix-ups)
+  let seen = 0;
+  for (let i = from; i <= to; i++) seen += track.seen[i];
+  if (seen < (total + 1) * 0.6) return out;
+  const smooth = points.map((p, i) => {
+    const a = points[Math.max(0, i - 1)];
+    const b = points[Math.min(total, i + 1)];
+    return { x: (a.x + p.x + b.x) / 3, y: (a.y + p.y + b.y) / 3 };
+  });
+  const moving = [start, ...smooth.slice(Math.max(1, leave), Math.min(total, arrive + 1)), end];
+  let walked = 0;
+  for (let i = 1; i < moving.length; i++) walked += Math.hypot(moving[i].x - moving[i - 1].x, moving[i].y - moving[i - 1].y);
+  const straight = Math.hypot(end.x - start.x, end.y - start.y);
+  if (walked > straight * 1.8 + 0.8) return out;
+  const turns = simplify(moving, 0.4)
+    .slice(1, -1)
+    .slice(0, 2)
+    .map((p) => {
+      const c = clampToStage(p, stage);
+      return { x: r2(c.x), y: r2(c.y) };
+    });
+  if (turns.length) out.path = { kind: 'points', points: turns } satisfies PathSpec;
+  return out;
+}
 
 export interface ApplyInput {
   mode: ApplyMode;
@@ -271,6 +379,8 @@ export interface ApplyInput {
   mapping: (ID | null)[];
   recenter: boolean;
   snap: boolean;
+  grid: boolean;
+  paths: boolean;
 }
 
 /** Holds converted to the choreography clock, snapped to the beats, never overlapping. */
@@ -298,7 +408,7 @@ function choreoHolds(original: Choreo, formations: DetectedFormation[], snap: bo
 
 /** Writes the detection into the choreography (inside an editor update: one undo step). Returns a short report. */
 export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInput): string {
-  const { mapping, recenter } = input;
+  const { mapping, recenter, grid } = input;
   const holds = choreoHolds(original, input.formations, input.snap);
   const stage = original.stage;
 
@@ -306,11 +416,29 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
     if (!holds.length) return 'Aucune formation trouvée dans la vidéo';
     for (const id of Object.keys(draft.formations)) delete draft.formations[id];
     const dancers = sortedDancers(original);
+    const placedBy: Map<ID, Vec>[] = [];
     holds.forEach((h, i) => {
       const at = computeFrame(original, h.a + 0.001);
-      const mine = dancerPositions(h.f.positions, mapping, recenter);
+      const mine = dancerPositions(h.f.positions, mapping, recenter, grid, stage);
+      placedBy.push(mine);
       const positions: Record<ID, Position> = {};
-      for (const d of dancers) positions[d.id] = onStage(mine.get(d.id) ?? at.dancers[d.id] ?? { x: 0, y: 0 }, stage);
+      for (const d of dancers) {
+        const p = mine.get(d.id);
+        if (!p) {
+          const c = clampToStage(at.dancers[d.id] ?? { x: 0, y: 0 }, stage);
+          positions[d.id] = { x: r2(c.x), y: r2(c.y) };
+          continue;
+        }
+        positions[d.id] = { ...p };
+        const k = mapping.indexOf(d.id);
+        const prev = holds[i - 1];
+        const before = placedBy[i - 1]?.get(d.id);
+        if (input.paths && prev && before && k >= 0 && input.tracks[k]) {
+          const fromIdx = prev.f.ranges[prev.f.ranges.length - 1][1];
+          const toIdx = h.f.ranges[0][0];
+          Object.assign(positions[d.id], routeFrom(input.tracks[k], fromIdx, toIdx, before, p, stage));
+        }
+      }
       const props: Choreo['formations'][string]['props'] = {};
       for (const pid in original.props) if (at.props[pid]) props[pid] = { ...at.props[pid] };
       const id = uid();
@@ -320,7 +448,7 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
         order: i,
         duration: r2(h.b - h.a),
         transition: i < holds.length - 1 ? r2(holds[i + 1].a - h.b) : 2,
-        easing: 'ease',
+        easing: input.paths ? 'linear' : 'ease',
         note: '',
         positions,
         props,
@@ -347,9 +475,9 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
       }
       const positions = tracks.map((t) => ({ x: median(indices.map((i) => t.xs[i])), y: median(indices.map((i) => t.ys[i])) }));
       const f = draft.formations[it.f.id];
-      for (const [id, p] of dancerPositions(positions, mapping, recenter)) {
+      for (const [id, p] of dancerPositions(positions, mapping, recenter, grid, stage)) {
         if (!draft.dancers[id]) continue;
-        f.positions[id] = { ...keepExtras(f.positions[id]), ...onStage(p, stage) };
+        f.positions[id] = { ...keepExtras(f.positions[id]), ...p };
       }
       changed++;
     }

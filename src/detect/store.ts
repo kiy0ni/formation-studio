@@ -9,7 +9,7 @@ import { playback } from '../store/playback';
 import { analysisSize, loadAnalysis, runAnalysis, type Ghosts } from './analysis';
 import { loadDetector } from './detector';
 import { fitFloor, toFloor } from './floor';
-import { applyTransform, DEFAULT_PLACEMENT, defaultMapping, placeTracks } from './formations';
+import { alignToGrid, applyTransform, DEFAULT_PLACEMENT, defaultMapping, placeTracks } from './formations';
 import { trackPeople } from './track';
 
 interface DetectUi {
@@ -43,7 +43,7 @@ export function setShowGhosts(show: boolean) {
 let controller: AbortController | null = null;
 
 /** Runs in the background: the window can be closed and opened again while it works. */
-export function startAnalysis(hash: string) {
+export function startAnalysis(hash: string, fps?: number) {
   if (useDetect.getState().job) return;
   controller = new AbortController();
   const signal = controller.signal;
@@ -54,7 +54,7 @@ export function startAnalysis(hash: string) {
     ?.request('screen')
     .then((l) => (lock = l))
     .catch(() => {});
-  runAnalysis(hash, (p) => useDetect.setState({ job: { hash, ...p } }), signal)
+  runAnalysis(hash, (p) => useDetect.setState({ job: { hash, ...p } }), signal, fps)
     .then(() => notify('Analyse terminée'))
     .catch((e: Error) => {
       if (e.name !== 'AbortError') {
@@ -103,7 +103,7 @@ export async function placeFromFrame() {
     if (!doc || doc.id !== start.doc.id) return;
     const analysis = await loadAnalysis(video.hash);
     const dets = boxes.map((b) => ({ ...b, s: b.score, sig: [] }));
-    let points;
+    let points: { x: number; y: number }[];
     if (analysis) {
       // same scale and placement as the full analysis
       const floor = fitFloor(analysis.frames.flat(), analysis.width, analysis.height);
@@ -124,6 +124,7 @@ export async function placeFromFrame() {
     const target = now.progress >= 0.5 && items[index + 1] ? items[index + 1] : items[index];
     if (!target) return;
     const dancers = sortedDancers(doc);
+    if (doc.stage.snap) points = alignToGrid(points, doc.stage);
     const mapping = defaultMapping(points, dancers.map((d) => ({ id: d.id, x: target.f.positions[d.id]?.x ?? 0 })));
     let placed = 0;
     s.update('Placer depuis la vidéo', (d) => {

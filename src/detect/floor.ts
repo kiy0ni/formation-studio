@@ -83,6 +83,11 @@ export function fitFloor(dets: BoxLike[], width: number, height: number): FloorM
   return model;
 }
 
+/** Usual height (fraction of the image) of a standing person whose feet are on this line of the image. */
+export function personHeight(m: FloorModel, feetY: number) {
+  return Math.max(0.35 * m.typical, m.perspective ? m.slope * feetY + m.intercept : m.typical);
+}
+
 /** Where a person stands on the floor, in meters (x: right as seen from the camera, y: towards the camera). */
 export function toFloor(m: FloorModel, d: { x: number; y: number; w: number; h: number }): Vec {
   const f = feet(d);

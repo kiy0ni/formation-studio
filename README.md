@@ -78,7 +78,9 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 - **Placer depuis l'image** : la formation affichée prend les positions de l'image de la vidéo au curseur.
 - **Voir les positions détectées** : cercles pointillés sur la scène pendant la lecture.
 - Aucun réglage du sol à faire : la profondeur vient de la taille des danseurs (plus loin = plus petit).
-- Suivi des personnes : la salle vide est apprise (caméra fixe) pour décrire seulement les danseurs (cheveux, haut, pantalon, chaussures) ; le suivi coupe dès que deux danseurs se croisent, puis recolle les morceaux par apparence et selon où chacun peut être. Des tenues identiques restent difficiles à distinguer : échange de deux personnes dans la relecture.
+- Analyse **Rapide** (3 images/s) ou **Précise** (5 images/s, conseillée : les croisements sont mieux suivis).
+- Suivi des personnes : la salle vide est apprise (caméra fixe) pour décrire seulement les danseurs (cheveux, haut, bras, pantalon, chaussures) ; le suivi coupe dès que deux danseurs se croisent, puis les morceaux sont regroupés par apparence (jamais deux endroits au même moment, jamais de téléportation). Vérifié sur une vidéo étiquetée à la main (6 danseurs dont 4 en noir). Des tenues identiques restent difficiles : échange de deux personnes dans la relecture.
+- Placement : distances réelles, milieu habituel du groupe au milieu de la scène, positions sur les repères de la grille (option), trajets et moments de départ/arrivée repris de la vidéo (option, mode « Tout »).
 
 ## Disposition sur ordinateur
 

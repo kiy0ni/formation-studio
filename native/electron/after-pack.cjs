@@ -5,6 +5,8 @@ const path = require('node:path');
 
 exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== 'win32') return;
+  // signed build (Azure Artifact Signing, Windows machine): electron-builder sets icon and version itself before signing
+  if (process.env.AZURE_SIGN_ENDPOINT) return;
   const ResEdit = await import('resedit');
   const { default: pngToIco } = await import('png-to-ico');
 

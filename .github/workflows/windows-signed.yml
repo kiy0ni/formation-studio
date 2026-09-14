@@ -1,0 +1,35 @@
+# Builds the Windows installer on a Windows machine and signs it with Azure Artifact Signing, then attaches it to
+# the GitHub release of the given version. Needs the AZURE_* secrets (see README « Alertes à l'installation »);
+# without them the installer is built unsigned (same as `npm run build:desktop` on the Mac).
+name: Windows signé
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version publiée (ex. 1.9.0), pour attacher le fichier à la release v<version>'
+        required: true
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Installeur Windows
+        run: npm run build:desktop -- --win
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGN_ENDPOINT: ${{ secrets.AZURE_SIGN_ENDPOINT }}
+          AZURE_SIGN_ACCOUNT: ${{ secrets.AZURE_SIGN_ACCOUNT }}
+          AZURE_SIGN_PROFILE: ${{ secrets.AZURE_SIGN_PROFILE }}
+      - name: Attacher à la release
+        run: gh release upload "v${{ inputs.version }}" native/release/Lineup-windows.exe --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

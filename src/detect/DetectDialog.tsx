@@ -3,12 +3,12 @@ import { Icon } from '../components/common/Icon';
 import { notify } from '../components/common/Toast';
 import { Modal, Segmented, Stepper, Toggle } from '../components/common/ui';
 import { initials, textOn } from '../lib/geometry';
-import { computeFrame, formatTime, sortedDancers, stageBounds } from '../lib/model';
+import { clampToStage, computeFrame, formatTime, sortedDancers, stageBounds } from '../lib/model';
 import type { ID } from '../lib/types';
 import { useEditor } from '../store/editor';
-import { FPS, loadAnalysis, saveAnalysis, type Analysis, type Swap } from './analysis';
+import { loadAnalysis, PRECISION, saveAnalysis, type Analysis, type Precision, type Swap } from './analysis';
 import { fitFloor } from './floor';
-import { applyDetection, applySwaps, buildGhosts, DEFAULT_PLACEMENT, defaultMapping, findFormations, placeTracks, positionsOver, type ApplyMode, type Placement } from './formations';
+import { alignToGrid, applyDetection, applySwaps, buildGhosts, DEFAULT_PLACEMENT, defaultMapping, findFormations, placeTracks, positionsOver, type ApplyMode, type Placement } from './formations';
 import { cancelAnalysis, startAnalysis, useDetect } from './store';
 import { thumbFor, trackPeople } from './track';
 
@@ -34,6 +34,7 @@ export function DetectDialog({ onClose }: { onClose: () => void }) {
     };
   }, [hash, running]);
 
+  const [precision, setPrecision] = useState<Precision>('precise');
   if (!video) return null;
   const intro = !analysis || again || running;
 
@@ -54,9 +55,22 @@ export function DetectDialog({ onClose }: { onClose: () => void }) {
               <Icon name="lock" size={16} /> Tout se calcule sur cet appareil
             </li>
             <li>
-              <Icon name="clock" size={16} /> Environ {estimate(video.duration)} · gardez l’écran allumé
+              <Icon name="clock" size={16} /> Environ {estimate(video.duration, PRECISION[precision])} · gardez l’écran allumé
             </li>
           </ul>
+          {!job && (
+            <div className="detect-row">
+              <span>Analyse</span>
+              <Segmented
+                value={precision}
+                options={[
+                  { value: 'fast', label: 'Rapide' },
+                  { value: 'precise', label: 'Précise' },
+                ]}
+                onChange={setPrecision}
+              />
+            </div>
+          )}
           {job ? (
             <div className="detect-progress" role="status">
               <span>{job.label}</span>
@@ -78,7 +92,7 @@ export function DetectDialog({ onClose }: { onClose: () => void }) {
                 </button>
               )}
               <span className="grow" />
-              <button className="btn primary" onClick={() => startAnalysis(hash)}>
+              <button className="btn primary" onClick={() => startAnalysis(hash, PRECISION[precision])}>
                 <Icon name="wand" size={16} /> {analysis ? 'Relancer l’analyse' : 'Lancer l’analyse'}
               </button>
             </div>
@@ -92,9 +106,9 @@ export function DetectDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-function estimate(duration: number) {
+function estimate(duration: number, fps: number) {
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-  const minutes = Math.round((duration * FPS * (coarse ? 0.3 : 0.13)) / 60);
+  const minutes = Math.round((duration * fps * (coarse ? 0.3 : 0.13)) / 60);
   return minutes < 1 ? 'moins d’une minute' : `${minutes} min`;
 }
 
@@ -133,6 +147,8 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
   const [mode, setMode] = useState<ApplyMode>(saved?.mode ?? 'all');
   const [snap, setSnap] = useState(saved?.snap ?? true);
   const [recenter, setRecenter] = useState(saved?.recenter ?? true);
+  const [grid, setGrid] = useState(saved?.grid ?? doc.stage.snap);
+  const [paths, setPaths] = useState(saved?.paths ?? true);
 
   const count = placed.tracks.length;
   const [mapping, setMapping] = useState<(ID | null)[]>(() =>
@@ -182,10 +198,10 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
     const before = useEditor.getState().doc!;
     let message = '';
     useEditor.getState().update('Détection automatique', (d) => {
-      message = applyDetection(d, before, { mode, formations, tracks: placed.tracks, times: analysis.times, mapping, recenter, snap });
+      message = applyDetection(d, before, { mode, formations, tracks: placed.tracks, times: analysis.times, mapping, recenter, snap, grid, paths });
     });
     const ghosts = buildGhosts(analysis, placed.tracks, mapping, before.dancers);
-    void saveAnalysis({ ...analysis, ghosts, review: { people, swaps, placement, sensitivity, mapping, mode, snap, recenter, transform: placed.transform } });
+    void saveAnalysis({ ...analysis, ghosts, review: { people, swaps, placement, sensitivity, mapping, mode, snap, recenter, grid, paths, transform: placed.transform } });
     useDetect.setState({ ghosts });
     notify(`${message} · Annuler pour revenir en arrière`);
     onClose();
@@ -195,6 +211,19 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
   const b = stageBounds(stage);
   const size = stage.dancerSize;
   const mapped = mapping.filter(Boolean).length;
+  // as they will land on the stage: kept on the stage, on the marks when asked
+  const shown = useMemo(() => {
+    if (!current) return [];
+    const inside = current.positions.map((p) => clampToStage(p, stage));
+    return grid ? alignToGrid(inside, stage) : inside;
+  }, [current, stage, grid]);
+  const marks = useMemo(() => {
+    const step = stage.gridStep > 0 ? stage.gridStep : 0.5;
+    const out: { x1: number; y1: number; x2: number; y2: number }[] = [];
+    for (let x = 0; x <= stage.width / 2 + 1e-6; x += step) for (const sx of x ? [x, -x] : [0]) out.push({ x1: sx, y1: -stage.depth / 2, x2: sx, y2: stage.depth / 2 });
+    for (let y = -stage.depth / 2; y <= stage.depth / 2 + 1e-6; y += step) out.push({ x1: -stage.width / 2, y1: y, x2: stage.width / 2, y2: y });
+    return out;
+  }, [stage]);
 
   return (
     <>
@@ -218,10 +247,13 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
             {frameUrl && <img className="detect-frame" src={frameUrl} alt="Image de la vidéo" />}
             <svg className="detect-stage" viewBox={`${b.minX} ${-stage.depth / 2 - 0.4} ${b.maxX - b.minX} ${stage.depth + 1.3}`}>
               <rect x={-stage.width / 2} y={-stage.depth / 2} width={stage.width} height={stage.depth} className="detect-floor" />
+              {marks.map((m, i) => (
+                <line key={i} {...m} className={m.x1 === 0 && m.x2 === 0 ? 'detect-mark middle' : 'detect-mark'} />
+              ))}
               <text x={0} y={stage.depth / 2 + 0.6} className="detect-audience">
                 PUBLIC
               </text>
-              {current?.positions.map((p, k) => {
+              {shown.map((p, k) => {
                 const d = mapping[k] ? doc.dancers[mapping[k]!] : null;
                 const color = d?.color ?? '#55555f';
                 return (
@@ -277,8 +309,9 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
               onChange={(v) => setPlacement({ ...placement, depth: DEPTHS[v] })}
             />
           </div>
-          <Toggle checked={placement.fill} onChange={(fill) => setPlacement({ ...placement, fill })} label="Occuper toute la scène" />
+          <Toggle checked={placement.fill} onChange={(fill) => setPlacement({ ...placement, fill })} label="Agrandir pour occuper la scène" />
           <Toggle checked={placement.flip} onChange={(flip) => setPlacement({ ...placement, flip })} label="Inverser gauche / droite" />
+          <Toggle checked={grid} onChange={setGrid} label="Aligner sur les repères de la scène" />
           {doc.music.bpm ? <Toggle checked={snap} onChange={setSnap} label="Caler sur les temps de la musique" /> : null}
 
           <h4>Qui danse qui</h4>
@@ -329,6 +362,7 @@ function Review({ analysis, onClose, onAgain }: { analysis: Analysis; onClose: (
             onChange={setMode}
           />
           <span className="hint">{MODE_HINT[mode]}</span>
+          {mode === 'all' && <Toggle checked={paths} onChange={setPaths} label="Trajets et départs comme dans la vidéo" />}
         </div>
       </div>
       <div className="detect-foot">
