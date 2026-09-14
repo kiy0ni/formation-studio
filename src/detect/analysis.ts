@@ -2,7 +2,7 @@ import { createStore, del, get, set } from 'idb-keyval';
 import { db } from '../lib/db';
 import type { ID } from '../lib/types';
 import { loadDetector } from './detector';
-import { signature } from './signature';
+import { medianBackground, signature, type Background } from './signature';
 
 /** A person seen on one analysed image (fractions of the image) with the colors of their clothes. */
 export interface Det {
@@ -62,7 +62,8 @@ export interface Analysis {
   ghosts?: Ghosts;
 }
 
-const VERSION = 1;
+/** 2: looks measured on the dancers only (room subtracted). Older analyses are run again. */
+const VERSION = 2;
 /** Images analysed per second of video. */
 export const FPS = 3;
 const KEYFRAME_EVERY = 2;
@@ -121,6 +122,23 @@ export async function runAnalysis(hash: string, onProgress: (p: Progress) => voi
   thumb.height = Math.round(height / 2);
   const thumbCtx = thumb.getContext('2d')!;
 
+  // the empty room, from images spread across the video (fixed camera)
+  onProgress({ label: 'Analyse… repérage de la salle', ratio: 0 });
+  const small = document.createElement('canvas');
+  small.width = Math.round(width / 2);
+  small.height = Math.round(height / 2);
+  const smallCtx = small.getContext('2d', { willReadFrequently: true })!;
+  const roomImages: ImageData[] = [];
+  const roomTimes = Array.from({ length: 13 }, (_, k) => Math.round(duration * (0.03 + (0.94 * k) / 12) * 1000) / 1000);
+  for await (const wrapped of sink.canvasesAtTimestamps(roomTimes)) {
+    if (signal.aborted) throw new DOMException('Analyse annulée', 'AbortError');
+    if (!wrapped) continue;
+    smallCtx.drawImage(wrapped.canvas, 0, 0, small.width, small.height);
+    roomImages.push(smallCtx.getImageData(0, 0, small.width, small.height));
+  }
+  const room: Background | null = medianBackground(roomImages);
+  roomImages.length = 0;
+
   const frames: Det[][] = [];
   const keyframes: Keyframe[] = [];
   const keyEvery = Math.round(FPS * KEYFRAME_EVERY);
@@ -136,7 +154,7 @@ export async function runAnalysis(hash: string, onProgress: (p: Progress) => voi
     ctx.drawImage(wrapped.canvas, 0, 0, width, height);
     const boxes = detector.detect(canvas);
     const pixels = boxes.length ? ctx.getImageData(0, 0, width, height) : null;
-    frames.push(boxes.map((b) => ({ x: r4(b.x), y: r4(b.y), w: r4(b.w), h: r4(b.h), s: r4(b.score), sig: signature(pixels!, b) })));
+    frames.push(boxes.map((b) => ({ x: r4(b.x), y: r4(b.y), w: r4(b.w), h: r4(b.h), s: r4(b.score), sig: signature(pixels!, b, room) })));
     if (i % keyEvery === 0) {
       thumbCtx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
       keyframes.push({ index: i, url: thumb.toDataURL('image/jpeg', 0.7) });
