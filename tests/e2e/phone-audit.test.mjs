@@ -234,7 +234,7 @@ async function runViewport(browser, vpName, vp, userEmail) {
   });
   await state('video-dialog', '.modal', async () => {
     await openSheet('Plus');
-    await tap('.more-row:has(span.grow:text-is("Vidéo"))');
+    await tap('.more-row:has(span.grow:text-is("Exporter en vidéo"))');
   });
   await esc();
   await state('sheet-video-reference', '.inspector', async () => {

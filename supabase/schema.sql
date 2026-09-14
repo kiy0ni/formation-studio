@@ -70,6 +70,14 @@ insert into storage.buckets (id, name, public, file_size_limit)
 values ('audio', 'audio', false, 52428800)
 on conflict (id) do nothing;
 
+-- files in a folder of a bucket, counted without the row rules (a rule counting its own table would loop)
+create or replace function public.folder_files(p_bucket text, p_folder text)
+returns integer language sql security definer set search_path = '' stable as $$
+  select count(*)::integer from storage.objects o where o.bucket_id = p_bucket and (storage.foldername(o.name))[1] = p_folder
+$$;
+revoke all on function public.folder_files(text, text) from public;
+grant execute on function public.folder_files(text, text) to authenticated;
+
 drop policy if exists "audio read own" on storage.objects;
 create policy "audio read own" on storage.objects
   for select to authenticated
@@ -79,7 +87,7 @@ drop policy if exists "audio insert own" on storage.objects;
 create policy "audio insert own" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'audio' and (storage.foldername(name))[1] = (select auth.uid())::text and name ~ '^[0-9a-f-]{36}/[a-f0-9]{16,64}$'
-    and (select count(*) from storage.objects o where o.bucket_id = 'audio' and (storage.foldername(o.name))[1] = (select auth.uid())::text) < 200);
+    and public.folder_files('audio', (select auth.uid())::text) < 200);
 
 drop policy if exists "audio update own" on storage.objects;
 create policy "audio update own" on storage.objects
@@ -336,7 +344,7 @@ drop policy if exists "room audio write" on storage.objects;
 create policy "room audio write" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'room-audio' and public.room_role(public.safe_uuid((storage.foldername(name))[1])) in ('owner', 'edit') and name ~ '^[0-9a-f-]{36}/[a-f0-9]{16,64}$'
-    and (select count(*) from storage.objects o where o.bucket_id = 'room-audio' and (storage.foldername(o.name))[1] = (storage.foldername(name))[1]) < 20);
+    and public.folder_files('room-audio', (storage.foldername(name))[1]) < 20);
 
 drop policy if exists "room audio update" on storage.objects;
 create policy "room audio update" on storage.objects
