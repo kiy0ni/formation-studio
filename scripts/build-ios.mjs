@@ -18,6 +18,7 @@ run('npx tsc --noEmit');
 run('npx vite build');
 
 console.log('\n▶ Projet iPhone');
+// CocoaPods: Capacitor is built from node_modules, nothing is downloaded by Xcode's package resolver
 run('node node_modules/@capacitor/cli/bin/capacitor sync ios');
 
 const [major, minor, patch] = pkg.version.split('.').map(Number);
@@ -26,9 +27,9 @@ run(`xcrun agvtool new-marketing-version ${pkg.version} >/dev/null && xcrun agvt
 
 if (check) {
   console.log('\n▶ Compilation (sans signature)');
-  run('xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO -quiet build', join(root, 'ios/App'));
+  run('xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO -quiet build', join(root, 'ios/App'));
   console.log('  ✓ L’app iPhone compile');
 } else {
-  run('open ios/App/App.xcodeproj');
+  run('open ios/App/App.xcworkspace');
   console.log('\n  Xcode : branchez l’iPhone, onglet « Signing & Capabilities » → Team = votre identifiant Apple, puis ▶');
 }
