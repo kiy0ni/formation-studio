@@ -78,6 +78,13 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 - **Placer depuis l'image** : la formation affichée prend les positions de l'image de la vidéo au curseur.
 - **Voir les positions détectées** : cercles pointillés sur la scène pendant la lecture.
 - Aucun réglage du sol à faire : la profondeur vient de la taille des danseurs (plus loin = plus petit).
+- Suivi des personnes : la salle vide est apprise (caméra fixe) pour décrire seulement les danseurs (cheveux, haut, pantalon, chaussures) ; le suivi coupe dès que deux danseurs se croisent, puis recolle les morceaux par apparence et selon où chacun peut être. Des tenues identiques restent difficiles à distinguer : échange de deux personnes dans la relecture.
+
+## Disposition sur ordinateur
+
+- Les bords de la liste des formations et du panneau de réglages se glissent pour les redimensionner (taille gardée ; double-clic : taille normale).
+- Avec la vidéo de référence affichée, la vidéo passe en haut de la colonne de gauche, au-dessus des formations.
+- Notifications en haut de l'écran (jamais sur la timeline ni sur les boutons des fenêtres).
 - Moteur : MediaPipe Object Detector (EfficientDet-Lite0, `public/detect/person-detector.tflite`, 7 Mo) + WebAssembly (~11 Mo), téléchargés seulement à la première utilisation (exclus du pré-cache hors ligne). Résultats gardés par vidéo dans IndexedDB `fs-detect`.
 - Code isolé dans `src/detect/` ; points d'accroche : `<DetectSection />` dans `src/video/RefVideoPanel.tsx`, `<DetectGhosts />` dans `src/components/editor/Stage2D.tsx`, filtre `vision_wasm` dans `vite.config.ts`.
 - **Retirer la fonctionnalité** :

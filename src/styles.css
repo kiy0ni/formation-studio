@@ -5226,3 +5226,122 @@ html.webview-short {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* ============================================================================
+   Computer: resizable panels, reference video above the formations list
+   ========================================================================== */
+@media (min-width: 861px) {
+  .editor-main {
+    position: relative;
+    grid-template-columns: var(--left-w, 200px) minmax(0, 1fr) var(--right-w, 320px);
+  }
+  .editor-main.with-video {
+    grid-template-columns: var(--side-w, clamp(280px, 26vw, 420px)) minmax(0, 1fr) var(--right-w, 320px);
+  }
+  .side-col,
+  .inspector-col {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+  .side-col {
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .side-col > .formation-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    border-right: 0;
+  }
+  .inspector-col > .inspector {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .side-col > .ref-video.column {
+    position: relative;
+    top: auto;
+    left: auto;
+    bottom: auto;
+    z-index: auto;
+    width: 100%;
+    flex: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .side-col > .ref-video.column video,
+  .side-col > .ref-video.column .ref-missing,
+  .side-col > .ref-video.column .ref-loading {
+    max-height: 58vh;
+  }
+  .panel-resizer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 9;
+    width: 10px;
+    cursor: col-resize;
+    touch-action: none;
+    outline: none;
+  }
+  .panel-resizer.left {
+    right: -5px;
+  }
+  .panel-resizer.right {
+    left: -5px;
+  }
+  .panel-resizer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 4px;
+    width: 2px;
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .panel-resizer:hover::after,
+  .panel-resizer:focus-visible::after,
+  .panel-resizer.dragging::after {
+    background: var(--accent);
+  }
+  body.resizing-panels {
+    cursor: col-resize;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body.resizing-panels video {
+    pointer-events: none;
+  }
+}
+@media (min-width: 861px) and (max-width: 1100px) {
+  .editor-main {
+    grid-template-columns: var(--left-w, 180px) minmax(0, 1fr) var(--right-w, 280px);
+  }
+  .editor-main.with-video {
+    grid-template-columns: var(--side-w, 260px) minmax(0, 1fr) var(--right-w, 280px);
+  }
+}
+
+/* notifications at the top: never over the buttons at the bottom (timeline, tab bar, dialog buttons) */
+.toast {
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  bottom: auto;
+  transform: translate(-50%, -16px);
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+.toast.show {
+  transform: translate(-50%, 0);
+}
+body:has(.editor):not(:has(.modal-backdrop)) .toast {
+  top: calc(env(safe-area-inset-top, 0px) + 62px);
+}
+/* computer: the hint bubble sits at the top of the stage, the notification just under it */
+@media (min-width: 861px) {
+  body:has(.editor):not(:has(.modal-backdrop)) .toast {
+    top: 112px;
+  }
+}
+

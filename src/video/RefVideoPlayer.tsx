@@ -45,7 +45,8 @@ export function RefVideoToggle() {
   );
 }
 
-export function RefVideoPlayer({ wide }: { wide: boolean }) {
+/** `column`: computer layout, the video heads the formations column. */
+export function RefVideoPlayer({ wide, column = false }: { wide: boolean; column?: boolean }) {
   const info = useEditor((s) => s.doc?.video ?? null);
   const { visible, expanded, corner, url, missing } = useRefVideo();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -137,7 +138,7 @@ export function RefVideoPlayer({ wide }: { wide: boolean }) {
 
   if (wide) {
     return (
-      <div className="ref-video docked">
+      <div className={`ref-video docked ${column ? 'column' : ''}`}>
         {media}
         <div className="ref-bar">
           <span className="grow ellipsis">{info.name}</span>

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from 'react';
 import { CollabSession, downloadAudio } from '../../collab/client';
 import { fetchCloudAudio } from '../../lib/cloud';
 import { db } from '../../lib/db';
@@ -6,6 +6,7 @@ import { insertFormationAfter, itemIndexAt, timeline } from '../../lib/model';
 import { navigate } from '../../lib/router';
 import type { CollabLink } from '../../lib/types';
 import { currentItem, onLocalChange, useEditor, type InspectorTab } from '../../store/editor';
+import { useLayout, useMedia } from '../../store/layout';
 import { loadMusic } from '../../store/music';
 import { playback } from '../../store/playback';
 import { useSaveStatus } from '../../store/save';
@@ -14,6 +15,7 @@ import { RefVideoJob, RefVideoPlayer, useWideLayout } from '../../video/RefVideo
 import { Icon } from '../common/Icon';
 import { FormationList } from './FormationList';
 import { Inspector, TABS } from './Inspector';
+import { PanelResizer } from './PanelResizer';
 import { SelectionBar } from './SelectionBar';
 import { Stage2D } from './Stage2D';
 import { Timeline } from './Timeline';
@@ -35,6 +37,12 @@ export function EditorPage({ id }: { id: string }) {
   const wide = useWideLayout();
   const hasRefVideo = useEditor((s) => !!s.doc?.video);
   const refVisible = useRefVideo((s) => s.visible);
+  // computer: panels side by side, resizable; the video sits above the formations list
+  const columns = useMedia('(min-width: 861px)');
+  const docked = hasRefVideo && refVisible && wide;
+  const videoColumn = docked && columns;
+  const leftWidth = useLayout((s) => (videoColumn ? s.side : s.left));
+  const rightWidth = useLayout((s) => s.right);
 
   useEffect(() => {
     let alive = true;
@@ -158,9 +166,17 @@ export function EditorPage({ id }: { id: string }) {
   return (
     <div className={`editor ${sheetOpen ? 'sheet-open' : ''}`}>
       <TopBar />
-      <div className="editor-main">
-        <FormationList />
-        <div className={`stage-wrap ${hasRefVideo && refVisible && wide ? 'ref-docked' : ''}`}>
+      <div className={`editor-main ${videoColumn ? 'with-video' : ''}`} style={columns ? panelWidths(videoColumn, leftWidth, rightWidth) : undefined}>
+        {columns ? (
+          <div className="side-col">
+            {videoColumn && <RefVideoPlayer wide column />}
+            <FormationList />
+            <PanelResizer key={videoColumn ? 'side' : 'left'} kind={videoColumn ? 'side' : 'left'} />
+          </div>
+        ) : (
+          <FormationList />
+        )}
+        <div className={`stage-wrap ${docked && !columns ? 'ref-docked' : ''}`}>
           <div className="stage-view">
             {view === '2d' ? (
               <Stage2D />
@@ -170,12 +186,19 @@ export function EditorPage({ id }: { id: string }) {
               </Suspense>
             )}
           </div>
-          {hasRefVideo && <RefVideoPlayer wide={wide} />}
+          {hasRefVideo && !videoColumn && <RefVideoPlayer wide={wide} />}
           <RefVideoJob />
           <CoachTip />
           <SelectionBar />
         </div>
-        <Inspector />
+        {columns ? (
+          <div className="inspector-col">
+            <Inspector />
+            <PanelResizer kind="right" />
+          </div>
+        ) : (
+          <Inspector />
+        )}
       </div>
       <Timeline />
       <nav className="toolbar" aria-label="Outils">
@@ -192,6 +215,13 @@ export function EditorPage({ id }: { id: string }) {
       {tour && <Tour onClose={() => setTour(false)} />}
     </div>
   );
+}
+
+function panelWidths(videoColumn: boolean, left: number | null, right: number | null): CSSProperties {
+  const style: Record<string, string> = {};
+  if (left) style[videoColumn ? '--side-w' : '--left-w'] = `${left}px`;
+  if (right) style['--right-w'] = `${right}px`;
+  return style as CSSProperties;
 }
 
 /** One short "what next" hint during the first steps. */
