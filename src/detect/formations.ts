@@ -10,8 +10,20 @@ export type Placement = ReviewSettings['placement'];
 export type Transform = ReviewSettings['transform'];
 export type ApplyMode = ReviewSettings['mode'];
 
-/** Real distances (meters), the group's usual middle on the middle of the stage. */
-export const DEFAULT_PLACEMENT: Placement = { flip: false, spread: 1, depth: 1, fill: false };
+/** Real distances (meters), the group's usual middle on the middle of the stage, each formation centred. */
+export const DEFAULT_PLACEMENT: Placement = { flip: false, spread: 1, depth: 1, fill: false, center: true };
+
+/**
+ * Each formation centred left-right on the stage: the camera is rarely exactly in the middle of the room and the
+ * group drifts, but a formation is meant to be centred (the person in the middle on the centre line).
+ */
+export function centerFormations(formations: DetectedFormation[]): DetectedFormation[] {
+  return formations.map((f) => {
+    if (!f.positions.length) return f;
+    const mid = f.positions.reduce((sum, p) => sum + p.x, 0) / f.positions.length;
+    return { ...f, positions: f.positions.map((p) => ({ x: p.x - mid, y: p.y })) };
+  });
+}
 
 /** Positions on the stage (meters, same axes as the editor) over time. */
 export interface Placed {
@@ -142,16 +154,18 @@ export function positionsOver(tracks: Placed[], ranges: [number, number][]): Vec
 }
 
 /** How much the group moves around each image (m/s): the fastest third of the people. */
-export function groupSpeed(tracks: Placed[], fps: number, window: number) {
+export function groupSpeed(tracks: Placed[], times: number[], window: number) {
   const n = tracks[0]?.xs.length ?? 0;
-  const w = Math.max(1, Math.round(fps * window));
   const top = Math.max(1, Math.ceil(tracks.length / 3));
   const speed = new Float32Array(n);
   const moving: number[] = [];
+  let a = 0;
+  let b = 0;
   for (let i = 0; i < n; i++) {
-    const a = Math.max(0, i - w);
-    const b = Math.min(n - 1, i + w);
-    const dt = (b - a) / fps || 1;
+    // images `window` seconds before and after (they are not evenly spaced)
+    while (a < i && times[i] - times[a] > window) a++;
+    while (b < n - 1 && times[b + 1] - times[i] <= window) b++;
+    const dt = times[b] - times[a] || 1;
     moving.length = 0;
     for (const t of tracks) moving.push(Math.hypot(t.xs[b] - t.xs[a], t.ys[b] - t.ys[a]) / dt);
     moving.sort((x, y) => y - x);
@@ -167,7 +181,7 @@ export function findFormations(tracks: Placed[], times: number[], fps: number, s
   const n = times.length;
   if (!n || !tracks.length) return [];
   const tune = { ...tuningFor(sensitivity), ...override };
-  const speed = groupSpeed(tracks, fps, tune.window);
+  const speed = groupSpeed(tracks, times, tune.window);
   // dancing in place moves the feet a little: the usual calm level of this video sets the bar
   const threshold = tune.threshold ?? Math.max(0.2, Math.min(0.9, percentile(speed, 0.3) * 1.8));
   const minHold = Math.max(1, Math.round(tune.minHold * fps));
@@ -326,15 +340,17 @@ function simplify(points: Vec[], tolerance: number): Vec[] {
  * How a dancer goes from one formation to the next, as seen in the video: when they leave and arrive
  * (share of the transition) and the turns of their route.
  */
-export function routeFrom(track: Placed, from: number, to: number, start: Vec, end: Vec, stage: StageSettings): Pick<Position, 'path' | 'timing'> {
+export function routeFrom(track: Placed, from: number, to: number, start: Vec, end: Vec, stage: StageSettings, times?: number[]): Pick<Position, 'path' | 'timing'> {
   const total = to - from;
   if (total < 2) return {};
   const a0 = { x: track.xs[from], y: track.ys[from] };
   const b0 = { x: track.xs[to], y: track.ys[to] };
+  // share of the transition elapsed at each image (images are not evenly spaced)
+  const share = (i: number) => (times ? (times[i] - times[from]) / (times[to] - times[from] || 1) : (i - from) / total);
   // the route bent so that it starts and ends exactly on the formations' positions
   const points: Vec[] = [];
   for (let i = from; i <= to; i++) {
-    const u = (i - from) / total;
+    const u = share(i);
     points.push({ x: track.xs[i] + (start.x - a0.x) * (1 - u) + (end.x - b0.x) * u, y: track.ys[i] + (start.y - a0.y) * (1 - u) + (end.y - b0.y) * u });
   }
   let leave = 0;
@@ -343,8 +359,8 @@ export function routeFrom(track: Placed, from: number, to: number, start: Vec, e
   while (arrive > leave && Math.hypot(points[arrive].x - end.x, points[arrive].y - end.y) < 0.2) arrive--;
   if (arrive <= leave || Math.hypot(end.x - start.x, end.y - start.y) < 0.15) return {};
   const out: Pick<Position, 'path' | 'timing'> = {};
-  const s = Math.max(0, (leave - 1) / total);
-  const e = Math.min(1, (arrive + 1) / total);
+  const s = Math.max(0, share(from + Math.max(0, leave - 1)));
+  const e = Math.min(1, share(from + Math.min(total, arrive + 1)));
   if ((s > 0.05 || e < 0.95) && e - s >= 0.15) out.timing = { start: r2(s), end: r2(e) };
   // a route only when the dancer was really seen moving, and it looks like a real walk (no zigzag from mix-ups)
   let seen = 0;
@@ -436,7 +452,7 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
         if (input.paths && prev && before && k >= 0 && input.tracks[k]) {
           const fromIdx = prev.f.ranges[prev.f.ranges.length - 1][1];
           const toIdx = h.f.ranges[0][0];
-          Object.assign(positions[d.id], routeFrom(input.tracks[k], fromIdx, toIdx, before, p, stage));
+          Object.assign(positions[d.id], routeFrom(input.tracks[k], fromIdx, toIdx, before, p, stage, input.times));
         }
       }
       const props: Choreo['formations'][string]['props'] = {};
@@ -501,14 +517,30 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
 
 /** The reviewed positions over time, in the colors of this choreography's dancers. */
 export function buildGhosts(an: Analysis, tracks: Placed[], mapping: (ID | null)[], dancers: Record<ID, Dancer>): Ghosts {
+  const start = an.times[0] ?? 0;
+  const end = an.times[an.times.length - 1] ?? start;
+  const count = Math.max(1, Math.round((end - start) * an.fps) + 1);
+  // positions on an even grid of times (the analysed images are not evenly spaced)
+  const resample = (values: Float32Array) => {
+    const out: number[] = [];
+    let j = 0;
+    for (let k = 0; k < count; k++) {
+      const t = start + k / an.fps;
+      while (j < an.times.length - 2 && an.times[j + 1] <= t) j++;
+      const span = an.times[j + 1] - an.times[j] || 1;
+      const u = Math.max(0, Math.min(1, (t - an.times[j]) / span));
+      out.push(r2(values[j] + (values[Math.min(j + 1, values.length - 1)] - values[j]) * u));
+    }
+    return out;
+  };
   return {
     hash: an.hash,
-    start: an.times[0] ?? 0,
+    start,
     fps: an.fps,
     tracks: tracks.map((t, k) => ({
       color: (mapping[k] && dancers[mapping[k]!]?.color) || '#9b9ba7',
-      xs: Array.from(t.xs, r2),
-      ys: Array.from(t.ys, r2),
+      xs: resample(t.xs),
+      ys: resample(t.ys),
     })),
   };
 }

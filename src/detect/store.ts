@@ -156,6 +156,9 @@ export async function placeFromFrame() {
     const target = now.progress >= 0.5 && items[index + 1] ? items[index + 1] : items[index];
     if (!target) return;
     const dancers = sortedDancers(doc);
+    // the group centred left-right, like the formations of a full detection
+    const mid = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+    points = points.map((p) => ({ x: p.x - mid, y: p.y }));
     if (doc.stage.snap) points = alignToGrid(points, doc.stage);
     const mapping = defaultMapping(points, dancers.map((d) => ({ id: d.id, x: target.f.positions[d.id]?.x ?? 0 })));
     let placed = 0;

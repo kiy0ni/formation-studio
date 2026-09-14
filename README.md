@@ -78,7 +78,8 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 - **Placer depuis l'image** : la formation affichée prend les positions de l'image de la vidéo au curseur.
 - **Voir les positions détectées** : cercles pointillés sur la scène pendant la lecture.
 - Aucun réglage du sol à faire : la profondeur vient de la taille des danseurs (plus loin = plus petit).
-- Analyse **Rapide** (3 images/s) ou **Précise** (5 images/s, conseillée : les croisements sont mieux suivis).
+- Analyse **Rapide** (3 images/s) ou **Précise** (5 images/s, conseillée). Quand deux danseurs se croisent, trois images de plus sont regardées entre les deux images du pas normal : les images ne sont donc pas régulièrement espacées (`times`), et le suivi, les vitesses, les trajets et les positions fantômes travaillent avec les vrais instants.
+- Chaque formation est centrée gauche-droite sur la scène (option « Centrer chaque formation », activée) : la caméra n'est jamais exactement au milieu de la salle.
 - Suivi des personnes : la salle vide est apprise (caméra fixe) pour décrire seulement les danseurs (cheveux, haut, bras, pantalon, chaussures) ; le suivi coupe dès que deux danseurs se croisent, puis les morceaux sont regroupés par apparence (jamais deux endroits au même moment, jamais de téléportation). Vérifié sur une vidéo étiquetée à la main (6 danseurs dont 4 en noir). Des tenues identiques restent difficiles : échange de deux personnes dans la relecture.
 - Placement : distances réelles, milieu habituel du groupe au milieu de la scène, positions sur les repères de la grille (option), trajets et moments de départ/arrivée repris de la vidéo (option, mode « Tout »).
 
@@ -96,6 +97,8 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
   - complet : revenir au repère `avant-detection-auto` (`git revert` du merge « Détection automatique », ou `git reset --hard avant-detection-auto` sur une branche), puis `npm uninstall @mediapipe/tasks-vision` si besoin.
 
 ## Alertes à l'installation (Mac, Windows, Android)
+
+La fenêtre « Installer » reconnaît le navigateur intégré de WhatsApp / Instagram / Messenger… (impossible d'installer : ouvrir dans Safari ou Chrome, bouton pour copier le lien) et Arc (pas d'installation d'app web), affiche en clair l'étape du premier lancement sous chaque téléchargement, et propose pour Mac une commande Terminal qui installe la dernière version sans l'alerte (`macInstallCommand` dans `src/lib/install.ts`).
 
 Les apps ne sont pas signées par Apple / Microsoft : macOS affiche « Apple n'a pas pu confirmer… », Windows « Windows a protégé votre ordinateur ». Le code est le même que le site ; c'est une question de certificat payant. L'app web installée (première option de « Installer ») n'a aucune alerte.
 

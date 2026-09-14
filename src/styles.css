@@ -5006,3 +5006,18 @@ body:has(.editor):not(:has(.modal-backdrop)) .toast {
     transition-duration: 0.01ms !important;
   }
 }
+
+.download-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.download-item > .btn {
+  align-self: flex-start;
+  white-space: normal;
+  text-align: left;
+}
+.install-steps .btn {
+  margin-top: 6px;
+}

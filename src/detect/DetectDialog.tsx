@@ -8,7 +8,7 @@ import type { ID } from '../lib/types';
 import { useEditor } from '../store/editor';
 import { loadAnalysis, loadApplied, PRECISION, saveApplied, type Analysis, type Precision, type ReviewSettings, type Swap } from './analysis';
 import { fitFloor } from './floor';
-import { alignToGrid, applyDetection, applySwaps, buildGhosts, DEFAULT_PLACEMENT, defaultMapping, findFormations, placeTracks, positionsOver, type ApplyMode, type Placement } from './formations';
+import { alignToGrid, applyDetection, applySwaps, buildGhosts, centerFormations, DEFAULT_PLACEMENT, defaultMapping, findFormations, placeTracks, positionsOver, type ApplyMode, type Placement } from './formations';
 import { cancelAnalysis, startAnalysis, useDetect } from './store';
 import { crops, thumbFor, trackPeople } from './track';
 
@@ -159,7 +159,10 @@ function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; sav
   const placed = useMemo(() => (swaps.length ? placeTracks(tracks, stage, placement) : unswapped), [swaps.length, tracks, stage, placement, unswapped]);
   const [sensitivity, setSensitivity] = useState(saved?.sensitivity ?? 0.5);
   const found = useMemo(() => findFormations(unswapped.tracks, analysis.times, analysis.fps, sensitivity), [unswapped, analysis, sensitivity]);
-  const formations = useMemo(() => (placed === unswapped ? found : found.map((f) => ({ ...f, positions: positionsOver(placed.tracks, f.ranges) }))), [found, placed, unswapped]);
+  const formations = useMemo(() => {
+    const raw = placed === unswapped ? found : found.map((f) => ({ ...f, positions: positionsOver(placed.tracks, f.ranges) }));
+    return placement.center === false ? raw : centerFormations(raw);
+  }, [found, placed, unswapped, placement.center]);
   const [selected, setSelected] = useState(0);
   const index = Math.max(0, Math.min(selected, formations.length - 1));
   const current = formations[index];
@@ -347,6 +350,7 @@ function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; sav
               onChange={(v) => setPlacement({ ...placement, depth: DEPTHS[v] })}
             />
           </div>
+          <Toggle checked={placement.center !== false} onChange={(center) => setPlacement({ ...placement, center })} label="Centrer chaque formation" />
           <Toggle checked={placement.fill} onChange={(fill) => setPlacement({ ...placement, fill })} label="Agrandir pour occuper la scène" />
           <Toggle checked={placement.flip} onChange={(flip) => setPlacement({ ...placement, flip })} label="Inverser gauche / droite" />
           <Toggle checked={grid} onChange={setGrid} label="Aligner sur les repères de la scène" />

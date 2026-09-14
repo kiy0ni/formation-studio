@@ -133,9 +133,10 @@ function buildPieces(an: Analysis, floor: FloorModel): Piece[] {
   const pieces: Piece[] = [];
   let active: Piece[] = [];
 
+  const times = an.times;
   const add = (t: Piece, i: number, e: Entry) => {
     if (t.idx.length) {
-      const dt = (i - t.last) / fps;
+      const dt = Math.max(0.02, times[i] - times[t.last]);
       let vx = (e.p.x - t.lx) / dt;
       let vy = (e.p.y - t.ly) / dt;
       const speed = Math.hypot(vx, vy);
@@ -168,14 +169,14 @@ function buildPieces(an: Analysis, floor: FloorModel): Piece[] {
   for (let i = 0; i < n; i++) {
     const frame = an.frames[i];
     const dets: Entry[] = frame.map((d, k) => ({ d, k, p: toFloor(floor, d), crowded: frame.some((o, j) => j !== k && covered(d, o) > 0.25) })).filter((e) => e.d.s >= 0.25);
-    active = active.filter((t) => i - t.last <= 3);
+    active = active.filter((t) => times[i] - times[t.last] <= 3 / fps + 0.05);
     const expected = active.map((t) => {
-      const dt = Math.min((i - t.last) / fps, 0.7);
+      const dt = Math.min(times[i] - times[t.last], 0.7);
       return { x: t.lx + t.vx * dt, y: t.ly + t.vy * dt };
     });
     const pairs: { a: number; e: Entry; dist: number }[] = [];
     active.forEach((t, a) => {
-      const gate = 0.4 + 1.5 * ((i - t.last) / fps);
+      const gate = 0.25 + 1.5 * (times[i] - times[t.last]);
       for (const e of dets) {
         const dist = Math.hypot(e.p.x - expected[a].x, e.p.y - expected[a].y);
         if (dist <= gate) pairs.push({ a, e, dist });
@@ -190,7 +191,8 @@ function buildPieces(an: Analysis, floor: FloorModel): Piece[] {
       usedT.add(a);
       usedE.add(e.k);
       const t = active[a];
-      const margin = Math.max(0.45, dist * 1.6);
+      // close images (extra ones around a crossing) make the prediction precise: a smaller doubt zone
+      const margin = Math.max(0.12 + 0.9 * (times[i] - times[t.last]), dist * 1.6);
       const unsure =
         dets.some((o) => o !== e && Math.hypot(o.p.x - expected[a].x, o.p.y - expected[a].y) < margin) ||
         expected.some((o, b) => b !== a && Math.hypot(e.p.x - o.x, e.p.y - o.y) < margin);
