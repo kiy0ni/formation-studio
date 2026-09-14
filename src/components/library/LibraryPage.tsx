@@ -21,6 +21,7 @@ import { DiscoverView } from './DiscoverView';
 import { InstallButton } from './InstallButton';
 import { NewChoreoFlow } from './NewChoreoFlow';
 import { AccountButton } from './AccountButton';
+import { ShareAppDialog } from './ShareAppDialog';
 import { ProfileButton } from './ProfileButton';
 import { TeamsView } from './TeamsView';
 import { TransferDialog } from './TransferDialog';
@@ -45,6 +46,7 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
   const [renaming, setRenaming] = useState<Choreo | null>(null);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [transfer, setTransfer] = useState(false);
+  const [shareApp, setShareApp] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
@@ -169,10 +171,14 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
           </button>
           <InstallButton />
           <AccountButton />
+          {shareApp && <ShareAppDialog onClose={() => setShareApp(false)} />}
           {COLLAB_ENABLED && <ProfileButton />}
           <Menu trigger={<button className="icon-btn" aria-label="Plus"><Icon name="dots" size={20} /></button>}>
             {(close) => (
               <>
+                <MenuItem icon="share" onClick={() => (close(), setShareApp(true))}>
+                  Partager Lineup
+                </MenuItem>
                 <MenuItem icon="swap" onClick={() => (close(), setTransfer(true))}>
                   Transférer vers un autre appareil
                 </MenuItem>

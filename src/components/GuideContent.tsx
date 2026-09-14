@@ -189,6 +189,9 @@ const SECTIONS: GuideSection[] = [
         <li>
           Une seule chorégraphie : <B>⋯</B> sur sa carte → <B>Envoyer</B>.
         </li>
+        <li>
+          Faire découvrir Lineup : Bibliothèque → <B>⋯</B> → <B>Partager Lineup</B> (QR code et lien).
+        </li>
       </ul>
     ),
   },

@@ -4683,3 +4683,55 @@ input[type='checkbox'].switch {
 .btn.danger-solid:disabled {
   opacity: 0.5;
 }
+
+/* share Lineup */
+.share-app {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.share-app .hint {
+  margin: 0;
+}
+.share-qr {
+  width: min(240px, 70vw);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border-radius: 14px;
+  display: block;
+}
+.share-qr.placeholder {
+  background: #fff;
+  opacity: 0.08;
+}
+.share-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 0;
+}
+.share-link span {
+  flex: 1;
+  min-width: 0;
+}
+.share-steps ul {
+  margin: 8px 0 10px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+.install-simple {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.install-simple .hint {
+  margin: 0;
+}

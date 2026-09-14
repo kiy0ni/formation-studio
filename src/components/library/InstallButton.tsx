@@ -5,37 +5,37 @@ import { Icon } from '../common/Icon';
 import { Modal } from '../common/ui';
 
 const STEPS: Record<Platform, { title: string; steps: string[] }> = {
-  'mac-safari': {
-    title: 'Sur Mac avec Safari',
-    steps: ['Ouvrez le menu « Fichier » en haut de l’écran.', 'Choisissez « Ajouter au Dock… » puis « Ajouter ».', 'Lineup apparaît dans le Dock et le Launchpad, comme une app normale.'],
-  },
-  'mac-chrome': {
-    title: 'Sur Mac avec Chrome ou Edge',
-    steps: ['Cliquez sur l’icône d’installation à droite de la barre d’adresse (un écran avec une flèche).', 'Ou menu ⋮ → « Caster, enregistrer et partager » → « Installer la page en tant qu’application ».', 'L’app s’ouvre dans sa propre fenêtre et se retrouve dans le dossier Applications.'],
+  ios: {
+    title: 'iPhone / iPad (Safari)',
+    steps: ['Touchez Partager (carré avec une flèche).', 'Touchez « Sur l’écran d’accueil ».', 'Touchez « Ajouter ».'],
   },
   android: {
-    title: 'Sur Android avec Chrome',
-    steps: ['Touchez le menu ⋮ en haut à droite.', 'Choisissez « Installer l’application » (ou « Ajouter à l’écran d’accueil »).', 'L’icône Lineup apparaît avec vos autres apps.'],
+    title: 'Android (Chrome)',
+    steps: ['Touchez ⋮ en haut à droite.', 'Touchez « Installer l’application ».'],
   },
-  ios: {
-    title: 'Sur iPhone / iPad avec Safari',
-    steps: ['Touchez le bouton Partager (carré avec une flèche).', 'Choisissez « Sur l’écran d’accueil ».', 'Touchez « Ajouter ».'],
+  'mac-safari': {
+    title: 'Mac (Safari)',
+    steps: ['Menu « Fichier » → « Ajouter au Dock… ».', 'Cliquez « Ajouter ».'],
+  },
+  'mac-chrome': {
+    title: 'Mac (Chrome ou Edge)',
+    steps: ['Cliquez l’icône « Installer » à droite de la barre d’adresse.', 'Ou menu ⋮ → « Installer Lineup ».'],
   },
   firefox: {
-    title: 'Firefox ne sait pas installer les apps web',
-    steps: ['Ouvrez ce même lien dans Safari ou Chrome.', 'Puis suivez les instructions d’installation affichées ici.'],
+    title: 'Firefox ne sait pas installer les apps',
+    steps: ['Ouvrez ce lien dans Safari, Chrome ou Edge.'],
   },
   other: {
-    title: 'Installer l’application',
-    steps: ['Dans Chrome ou Edge : icône d’installation dans la barre d’adresse, ou menu ⋮ → « Installer ».', 'Dans Safari (Mac) : menu Fichier → « Ajouter au Dock ».'],
+    title: 'Chrome ou Edge',
+    steps: ['Cliquez l’icône « Installer » à droite de la barre d’adresse.', 'Ou menu ⋮ → « Installer Lineup ».'],
   },
 };
 
-const APPS: { id: string; icon: 'stage' | 'window' | 'hand'; title: string; detail: string; url: string; first: string }[] = [
-  { id: 'mac-arm', icon: 'stage', title: 'Mac (Apple M1, M2, M3, M4…)', detail: 'Fichier .dmg', url: DOWNLOADS.macArm, first: 'Glissez l’app dans Applications. Au premier lancement : Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».' },
-  { id: 'mac-intel', icon: 'stage', title: 'Mac (processeur Intel)', detail: 'Fichier .dmg', url: DOWNLOADS.macIntel, first: 'Même installation que ci-dessus.' },
-  { id: 'windows', icon: 'window', title: 'Windows 10 / 11', detail: 'Installeur .exe', url: DOWNLOADS.windows, first: 'Si Windows affiche « Windows a protégé votre ordinateur » : « Informations complémentaires » → « Exécuter quand même ».' },
-  { id: 'android', icon: 'hand', title: 'Android', detail: 'Fichier .apk', url: DOWNLOADS.android, first: 'Ouvrez le fichier téléchargé et autorisez l’installation depuis cette source si Android le demande.' },
+const APPS: { id: string; icon: 'stage' | 'window' | 'hand'; title: string; url: string; first: string }[] = [
+  { id: 'mac-arm', icon: 'stage', title: 'Mac (puce Apple)', url: DOWNLOADS.macArm, first: 'Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».' },
+  { id: 'mac-intel', icon: 'stage', title: 'Mac (Intel)', url: DOWNLOADS.macIntel, first: 'Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».' },
+  { id: 'windows', icon: 'window', title: 'Windows', url: DOWNLOADS.windows, first: '« Informations complémentaires » → « Exécuter quand même ».' },
+  { id: 'android', icon: 'hand', title: 'Android (.apk)', url: DOWNLOADS.android, first: 'Autorisez l’installation depuis cette source.' },
 ];
 
 export function InstallButton() {
@@ -44,9 +44,7 @@ export function InstallButton() {
   useEffect(() => onInstallChange(rerender), []);
 
   if (IS_NATIVE_APP || isStandalone()) return null;
-  const platform = detectPlatform();
-  const info = STEPS[platform];
-  const suggested = platform === 'android' ? 'android' : /Windows/.test(navigator.userAgent) ? 'windows' : platform.startsWith('mac') ? 'mac-arm' : null;
+  const info = STEPS[detectPlatform()];
 
   return (
     <>
@@ -54,48 +52,12 @@ export function InstallButton() {
         <Icon name="download" /> <span className="hide-sm">Installer l’app</span>
       </button>
       {help && (
-        <Modal title="Installer Lineup" onClose={() => setHelp(false)} width={620}>
-          <div className="install-section">
-            <b>Application à télécharger</b>
-            <p className="hint">Une vraie app qui s’ouvre dans sa propre fenêtre et fonctionne sans internet.</p>
-            <div className="download-grid">
-              {APPS.map((a) => (
-                <button key={a.id} className={`download-card ${suggested === a.id ? 'suggested' : ''}`} onClick={() => openExternal(a.url)} title={a.first}>
-                  <Icon name={a.icon} size={20} />
-                  <span>
-                    <b>{a.title}</b>
-                    <small>
-                      {a.detail}
-                      {suggested === a.id ? ' · conseillé pour cet appareil' : ''}
-                    </small>
-                  </span>
-                  <Icon name="download" size={16} />
-                </button>
-              ))}
-            </div>
-            <details className="install-details">
-              <summary>Premier lancement : que faire si un avertissement s’affiche ?</summary>
-              <ul>
-                {APPS.filter((a) => a.id !== 'mac-intel').map((a) => (
-                  <li key={a.id}>
-                    <b>{a.title.split(' (')[0]} :</b> {a.first}
-                  </li>
-                ))}
-              </ul>
-              <p className="hint">Ces avertissements apparaissent pour les apps distribuées hors des stores. Ils ne concernent que la première ouverture.</p>
-            </details>
-          </div>
-
-          <div className="install-section">
-            <b>{platform === 'ios' ? 'iPhone / iPad' : 'Ou sans rien télécharger'}</b>
-            <p className="hint">
-              {platform === 'ios'
-                ? 'Sur iPhone, l’app s’installe depuis Safari : elle reste fixe, plein écran et fonctionne hors ligne.'
-                : 'Ajoutez simplement ce site comme une app depuis le navigateur.'}
-            </p>
+        <Modal title="Installer Lineup" onClose={() => setHelp(false)} width={440}>
+          <div className="install-simple">
+            <p className="hint">Gratuit, sans store. Marche hors ligne et se met à jour toute seule.</p>
             {canPromptInstall() ? (
-              <button className="btn primary" onClick={() => promptInstall()}>
-                <Icon name="download" /> Installer depuis le navigateur
+              <button className="btn primary big" onClick={() => promptInstall().then((ok) => ok && setHelp(false))}>
+                <Icon name="download" /> Installer
               </button>
             ) : (
               <div className="install-steps">
@@ -107,10 +69,23 @@ export function InstallButton() {
                 </ol>
               </div>
             )}
+            <p className="hint">Même compte sur chaque appareil = mêmes chorégraphies partout.</p>
+            <details className="install-details">
+              <summary>Autres options : apps à télécharger</summary>
+              <div className="download-grid">
+                {APPS.map((a) => (
+                  <button key={a.id} className="download-card" onClick={() => openExternal(a.url)} title={a.first}>
+                    <Icon name={a.icon} size={20} />
+                    <span>
+                      <b>{a.title}</b>
+                      <small>Premier lancement : {a.first}</small>
+                    </span>
+                    <Icon name="download" size={16} />
+                  </button>
+                ))}
+              </div>
+            </details>
           </div>
-          <p className="hint">
-            Vos chorégraphies sont enregistrées sur chaque appareil. Pour passer de l’un à l’autre : « Données → Sauvegarder toute la bibliothèque », puis « Importer » sur le nouvel appareil.
-          </p>
         </Modal>
       )}
     </>
