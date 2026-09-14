@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { VIDEO_REFERENCE_ENABLED } from '../../lib/config';
 import { db } from '../../lib/db';
 import { download, safe } from '../../lib/exporters';
 import { createReferenceRenderer } from '../../video/referenceRender';
@@ -13,7 +12,7 @@ import { Icon } from '../common/Icon';
 import { notify } from '../common/Toast';
 import { Modal, Segmented, Toggle } from '../common/ui';
 
-type Settings = Omit<VideoOptions, 'range'> & { rangeKind: 'all' | 'current'; withReference: boolean };
+type Settings = Omit<VideoOptions, 'range'> & { rangeKind: 'all' | 'current'; withReference: boolean; refMirror: boolean };
 
 type Phase =
   | { kind: 'setup' }
@@ -36,7 +35,9 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
       showNotes: true,
       focusDancer: s.focusDancer,
       includeAudio: !!s.doc?.music.hash,
-      withReference: VIDEO_REFERENCE_ENABLED && !!s.doc?.video,
+      withReference: !!s.doc?.video,
+      // starts like the video's own setting, can be changed for this export
+      refMirror: !!s.doc?.video?.mirror,
     };
   });
   const [phase, setPhase] = useState<Phase>({ kind: 'setup' });
@@ -47,7 +48,7 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
   const [refBlob, setRefBlob] = useState<Blob | null>(null);
   const previewVideo = useRef<HTMLVideoElement | null>(null);
   const [frameTick, setFrameTick] = useState(0);
-  const refInfo = VIDEO_REFERENCE_ENABLED ? doc.video ?? null : null;
+  const refInfo = doc.video ?? null;
   useEffect(() => {
     if (!refInfo) return void setRefBlob(null);
     let alive = true;
@@ -85,6 +86,7 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
   const [previewT, setPreviewT] = useState(range.start);
   useEffect(() => setPreviewT(range.start), [range.start]);
   const useReference = cfg.withReference && !!refBlob && !!refInfo;
+  const refForExport = refInfo ? { ...refInfo, mirror: cfg.refMirror } : null;
   useEffect(() => {
     const v = previewVideo.current;
     if (!v || !refInfo || !useReference) return;
@@ -102,7 +104,7 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
     c.width = width;
     c.height = height;
     if (useReference) {
-      const r = createReferenceRenderer(doc, width, height, options, { blob: refBlob!, info: refInfo! });
+      const r = createReferenceRenderer(doc, width, height, options, { blob: refBlob!, info: refForExport! });
       const v = previewVideo.current;
       if (v && v.readyState >= 2) r.setFrame(v, v.videoWidth, v.videoHeight);
       r.draw(c.getContext('2d')!, previewT);
@@ -133,7 +135,7 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
       let last = 0;
       const result = await exportVideo(
         doc,
-        { ...options, reference: useReference ? { blob: refBlob!, info: refInfo! } : undefined },
+        { ...options, reference: useReference ? { blob: refBlob!, info: refForExport! } : undefined },
         (progress) => {
           const now = performance.now();
           if (now - last > 80 || progress.ratio >= 0.98) {
@@ -252,14 +254,10 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
               <Toggle checked={cfg.showPaths} onChange={(showPaths) => set({ showPaths })} label="Trajets" />
               <Toggle checked={cfg.showCounts} onChange={(showCounts) => set({ showCounts })} label={doc.music.bpm ? 'Comptes (8 temps)' : 'Comptes (BPM requis)'} />
               <Toggle checked={cfg.showNotes} onChange={(showNotes) => set({ showNotes })} label="Notes" />
-              {refInfo && (
-                <Toggle
-                  checked={useReference}
-                  onChange={(withReference) => set({ withReference })}
-                  label={refBlob ? (cfg.aspect === 'landscape' ? 'Vidéo de référence (à côté)' : 'Vidéo de référence (au-dessus)') : 'Vidéo de référence (absente ici)'}
-                />
-              )}
+              {refInfo && <Toggle checked={useReference} onChange={(withReference) => set({ withReference })} label={refBlob ? 'Vidéo de référence' : 'Vidéo absente ici'} />}
+              {useReference && <Toggle checked={cfg.refMirror} onChange={(refMirror) => set({ refMirror })} label="Vidéo en miroir" />}
             </div>
+            {useReference && <span className="hint">{cfg.aspect === 'landscape' ? 'La vidéo sera à côté des formations.' : 'La vidéo sera au-dessus des formations.'}</span>}
             <button className="btn primary block" onClick={start}>
               <Icon name="video" /> Créer la vidéo
             </button>

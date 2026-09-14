@@ -28,8 +28,8 @@ import type { Choreo, Easing, ID, PathKind } from '../../lib/types';
 import { useCollisions } from '../../store/derived';
 import { currentItem, useEditor, type InspectorTab } from '../../store/editor';
 import { useLibrary } from '../../store/library';
-import { VIDEO_REFERENCE_ENABLED } from '../../lib/config';
 import { RefVideoPanel } from '../../video/RefVideoPanel';
+import { attachReferenceVideo } from '../../video/refVideo';
 import { importMusicFile, redetectBpm, useMusic } from '../../store/music';
 import { playback } from '../../store/playback';
 import { Collapsible, Tip } from '../common/Collapsible';
@@ -81,7 +81,7 @@ export function Inspector() {
         {current.id === 'music' && <MusicPanel />}
         {current.id === 'stage' && <StagePanel />}
         {current.id === 'more' && <MorePanel />}
-        {current.id === 'video' && VIDEO_REFERENCE_ENABLED && <RefVideoPanel />}
+        {current.id === 'video' && <RefVideoPanel />}
       </div>
     </aside>
   );
@@ -723,6 +723,8 @@ function MusicPanel() {
       const { fromVideo, ...info } = await importMusicFile(file, setStage);
       update('Musique', (d) => void (d.music = { ...info, countsPerPhrase: d.music.countsPerPhrase ?? 8 }));
       notify(`${fromVideo ? 'Son de la vidéo importé' : 'Musique importée'}${info.bpm ? ` · ${info.bpm} BPM` : ''}`);
+      const current = useEditor.getState().doc;
+      if (fromVideo && current && !current.video) void attachReferenceVideo(current.id, file);
     } catch (e) {
       const msg = (e as Error)?.message ?? '';
       alert(msg.startsWith('Cette') || msg.startsWith('Impossible') ? msg : 'Fichier illisible.');
@@ -756,7 +758,7 @@ function MusicPanel() {
           <button className="dropzone" disabled={readOnly || busy} onClick={() => fileRef.current?.click()}>
             <Icon name="plus" size={24} />
             <b>{busy ? (stage === 'extract' ? 'Extraction du son…' : 'Analyse…') : 'Importer la musique'}</b>
-            <span>Chanson ou vidéo</span>
+            <span>Chanson ou vidéo · galerie ou fichiers</span>
           </button>
         )}
         <input
@@ -824,7 +826,7 @@ function MusicPanel() {
         ) : null}
       </Collapsible>
 
-      {VIDEO_REFERENCE_ENABLED && (
+      {(
         <div className="panel-block">
           <button className="btn small block" onClick={() => useEditor.setState({ tab: 'video' })}>
             <Icon name="video" size={14} /> {doc.video ? 'Vidéo de référence' : 'Ajouter une vidéo de référence'}
@@ -923,7 +925,7 @@ function MorePanel() {
     <div className="more">
       <div className="more-group">
         {row('music', 'Musique', () => set({ tab: 'music' }), doc.music.name)}
-        {VIDEO_REFERENCE_ENABLED && row('video', 'Vidéo de référence', () => set({ tab: 'video' }), doc.video?.name)}
+        {row('video', 'Vidéo de référence', () => set({ tab: 'video' }), doc.video?.name)}
         {row('stage', 'Scène', () => set({ tab: 'stage' }), `${doc.stage.width} × ${doc.stage.depth} m`)}
       </div>
       <div className="more-group">

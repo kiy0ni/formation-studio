@@ -17,6 +17,19 @@ export function useWideLayout() {
   return wide;
 }
 
+/** Progress of a video being prepared in the background for the open choreography. */
+export function RefVideoJob() {
+  const job = useRefVideo((s) => s.job);
+  const docId = useEditor((s) => s.doc?.id);
+  if (!job || job.choreoId !== docId) return null;
+  return (
+    <div className="ref-job" role="status">
+      <Icon name="video" size={14} /> {job.label}
+      {job.ratio !== undefined ? ` ${Math.round(job.ratio * 100)} %` : ''}
+    </div>
+  );
+}
+
 /** Top bar button (computer): shows / hides the video, or opens its settings when there is none. */
 export function RefVideoToggle() {
   const has = useEditor((s) => !!s.doc?.video);
@@ -47,28 +60,48 @@ export function RefVideoPlayer({ wide }: { wide: boolean }) {
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !info) return;
-    const sync = () => {
+    let lastSeek = 0;
+    let lastCheck = 0;
+    const sync = (force: boolean) => {
       const { time, playing, rate } = useEditor.getState();
+      const now = performance.now();
+      // while playing, a few checks per second are enough (seeking a video on every frame makes it stutter)
+      if (playing && !force && now - lastCheck < 200) return;
+      lastCheck = now;
       const duration = Number.isFinite(v.duration) ? v.duration : info.duration;
       const target = time + info.offset;
       const clamped = Math.max(0, Math.min(Math.max(0, duration - 0.05), target));
       if (playing && target >= 0 && target < duration - 0.05) {
-        if (v.playbackRate !== rate) v.playbackRate = rate;
-        if (!v.seeking && Math.abs(v.currentTime - clamped) > 0.3) v.currentTime = clamped;
-        if (v.paused) v.play().catch(() => {});
+        const drift = v.currentTime - clamped;
+        if (v.paused) {
+          if (!v.seeking && Math.abs(drift) > 0.1) v.currentTime = clamped;
+          v.playbackRate = rate;
+          v.play().catch(() => {});
+          return;
+        }
+        if (Math.abs(drift) > 0.75 && !v.seeking && now - lastSeek > 1500) {
+          lastSeek = now;
+          v.currentTime = clamped;
+        }
+        // small drift: speed up or slow down a touch instead of jumping
+        const wanted = Math.abs(drift) > 0.12 ? rate * (drift > 0 ? 0.92 : 1.08) : rate;
+        if (Math.abs(v.playbackRate - wanted) > 0.001) v.playbackRate = wanted;
       } else {
         if (!v.paused) v.pause();
+        if (v.playbackRate !== rate) v.playbackRate = rate;
         if (!v.seeking && Math.abs(v.currentTime - clamped) > 0.04) v.currentTime = clamped;
       }
     };
-    sync();
+    sync(true);
     const unsub = useEditor.subscribe((s, p) => {
-      if (s.time !== p.time || s.playing !== p.playing || s.rate !== p.rate) sync();
+      if (s.playing !== p.playing || s.rate !== p.rate) sync(true);
+      else if (s.time !== p.time) sync(!s.playing);
     });
-    v.addEventListener('loadedmetadata', sync);
+    const onMeta = () => sync(true);
+    v.addEventListener('loadedmetadata', onMeta);
     return () => {
       unsub();
-      v.removeEventListener('loadedmetadata', sync);
+      v.removeEventListener('loadedmetadata', onMeta);
     };
   }, [info, url, visible, expanded, wide]);
 

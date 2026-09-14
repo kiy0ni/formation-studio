@@ -9,9 +9,8 @@ import { currentItem, onLocalChange, useEditor, type InspectorTab } from '../../
 import { loadMusic } from '../../store/music';
 import { playback } from '../../store/playback';
 import { useSaveStatus } from '../../store/save';
-import { VIDEO_REFERENCE_ENABLED } from '../../lib/config';
 import { useRefVideo } from '../../video/refVideo';
-import { RefVideoPlayer, useWideLayout } from '../../video/RefVideoPlayer';
+import { RefVideoJob, RefVideoPlayer, useWideLayout } from '../../video/RefVideoPlayer';
 import { Icon } from '../common/Icon';
 import { FormationList } from './FormationList';
 import { Inspector, TABS } from './Inspector';
@@ -34,7 +33,7 @@ export function EditorPage({ id }: { id: string }) {
   const musicHash = useEditor((s) => s.doc?.music.hash);
   const [tour, setTour] = useState(false);
   const wide = useWideLayout();
-  const hasRefVideo = useEditor((s) => VIDEO_REFERENCE_ENABLED && !!s.doc?.video);
+  const hasRefVideo = useEditor((s) => !!s.doc?.video);
   const refVisible = useRefVideo((s) => s.visible);
 
   useEffect(() => {
@@ -172,6 +171,7 @@ export function EditorPage({ id }: { id: string }) {
             )}
           </div>
           {hasRefVideo && <RefVideoPlayer wide={wide} />}
+          <RefVideoJob />
           <CoachTip />
           <SelectionBar />
         </div>

@@ -18,7 +18,6 @@ import { IconButton, Menu, MenuCheck, MenuItem, Modal, Segmented } from '../comm
 import { startTour } from './EditorPage';
 import { exportPng } from './editorActions';
 import { ShareDialog } from './ShareDialog';
-import { VIDEO_REFERENCE_ENABLED } from '../../lib/config';
 import { RefVideoToggle } from '../../video/RefVideoPlayer';
 import { VideoExportDialog } from './VideoExportDialog';
 
@@ -85,7 +84,7 @@ export function TopBar() {
         <Menu align="left" trigger={<button className="btn small ghost"><Icon name="eye" size={15} /> Affichage</button>}>
           {() => <DisplayChecks />}
         </Menu>
-        {VIDEO_REFERENCE_ENABLED && <RefVideoToggle />}
+        <RefVideoToggle />
       </div>
 
       <div className="topbar-right">

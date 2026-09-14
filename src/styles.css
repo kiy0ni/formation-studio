@@ -5008,7 +5008,7 @@ html.webview-short {
 }
 
 /* ============================================================================
-   Reference video (src/video) — remove this block with the feature
+   Reference video (src/video)
    ========================================================================== */
 .stage-view {
   position: absolute;
@@ -5186,4 +5186,43 @@ html.webview-short {
 .ref-video.docked .ref-missing,
 .ref-video.docked .ref-loading {
   aspect-ratio: 16 / 9;
+}
+.ref-job {
+  position: absolute;
+  top: 60px;
+  right: 10px;
+  z-index: 7;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.flow-keep-video {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-size: 14px;
+}
+.flow-keep-video span {
+  flex: 1;
+}
+/* export options: labels wrap inside their column instead of widening the window on phones */
+.video-toggles > * {
+  min-width: 0;
+}
+.video-toggles label span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

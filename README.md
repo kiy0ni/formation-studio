@@ -65,17 +65,9 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 - Éditeur → **Plus → Vidéo de référence** (ordinateur : bouton **Vidéo** en haut) : la vidéo défile avec la musique. Téléphone : mini-vidéo à glisser dans un coin, touchée pour l'agrandir ; ordinateur / tablette / paysage : colonne à côté de la scène. Réglages : afficher, miroir, décalage, retirer.
 - La vidéo est allégée (environ 480p, sans son) et reste **sur l'appareil** (IndexedDB `fs-video`), jamais envoyée au compte ni aux partages. La chorégraphie ne garde que ses réglages (`video`).
 - Export vidéo : option **Vidéo de référence** — au-dessus de la scène en 9:16 et 1:1, à côté en 16:9.
-- Code isolé dans `src/video/` ; branchements marqués `VIDEO_REFERENCE_ENABLED`.
-
-**Désactiver sans rien supprimer** : `VIDEO_REFERENCE_ENABLED = false` dans `src/lib/config.ts`, puis `npm run deploy` (et les apps si besoin).
-
-**Annuler complètement** : la fonction est arrivée sur `main` en un seul commit de fusion.
-```
-git log --merges --oneline -1          # repérer le commit « Vidéo de référence »
-git revert -m 1 <commit>               # l'annuler
-npm run deploy
-```
-Retour à l'état exact d'avant : tag `v1.5.4-avant-video`.
+- Code dans `src/video/` (import et allègement, lecteur synchronisé, réglages, rendu de l'export).
+- Les réglages (miroir, décalage) suivent sur les autres appareils et dans les chorégraphies partagées ; chacun importe la vidéo de son côté.
+- Une vidéo importée comme musique est aussi gardée comme vidéo de référence (option dans la création).
 
 ## iPhone
 

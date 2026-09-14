@@ -7,6 +7,7 @@ import type { Choreo, Formation } from './types';
  *   meta            { name }
  *   stage           StageSettings
  *   music           MusicInfo
+ *   video           RefVideo settings (the video file itself stays on each device)
  *   d:<id>          Dancer
  *   p:<id>          Prop
  *   f:<id>          Formation fields (without positions / props)
@@ -30,6 +31,7 @@ function formationMeta(f: Formation) {
 
 export function flatten(doc: Choreo): Flat {
   const out: Flat = { meta: { name: doc.name }, stage: doc.stage, music: doc.music };
+  if (doc.video) out.video = doc.video;
   for (const id in doc.dancers) out[`d:${id}`] = doc.dancers[id];
   for (const id in doc.props) out[`p:${id}`] = doc.props[id];
   for (const fid in doc.formations) {
@@ -79,6 +81,8 @@ export function applyPatch(draft: Choreo, patch: Patch) {
       if (clone) draft.stage = clone;
     } else if (k === 'music') {
       if (clone) draft.music = clone;
+    } else if (k === 'video') {
+      draft.video = clone ?? null;
     } else if (k.startsWith('d:')) {
       const id = k.slice(2);
       if (clone) draft.dancers[id] = clone;

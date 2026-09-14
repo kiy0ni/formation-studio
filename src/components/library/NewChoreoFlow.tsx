@@ -5,6 +5,7 @@ import { isMediaFile, MEDIA_ACCEPT } from '../../lib/media';
 import { createChoreo, defaultMembers, formatTime, sortedFormations, STAGE_PRESETS } from '../../lib/model';
 import type { Choreo, Folder, MusicInfo, Team } from '../../lib/types';
 import { importMusicFile } from '../../store/music';
+import { attachReferenceVideo } from '../../video/refVideo';
 import { Icon } from '../common/Icon';
 import { Stepper } from '../common/ui';
 
@@ -35,6 +36,9 @@ export function NewChoreoFlow({
   const [width, setWidth] = useState(10);
   const [depth, setDepth] = useState(8);
   const [music, setMusic] = useState<MusicInfo | null>(null);
+  /** Music taken from a video: its image can become the reference video. */
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [keepVideo, setKeepVideo] = useState(true);
   const [busy, setBusy] = useState<'' | 'extract' | 'analyze'>('');
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -55,8 +59,9 @@ export function NewChoreoFlow({
     setError(null);
     setBusy('analyze');
     try {
-      const { fromVideo: _v, ...info } = await importMusicFile(file, setBusy);
+      const { fromVideo, ...info } = await importMusicFile(file, setBusy);
       setMusic(info);
+      setVideoFile(fromVideo ? file : null);
       setName((n) => n || info.name || '');
     } catch (e) {
       const msg = (e as Error)?.message ?? '';
@@ -93,6 +98,7 @@ export function NewChoreoFlow({
       });
     }
     onCreate(doc);
+    if (keepVideo && videoFile && music) void attachReferenceVideo(doc.id, videoFile);
   };
 
   return (
@@ -205,8 +211,15 @@ export function NewChoreoFlow({
                 >
                   {busy ? <div className="spinner" /> : <Icon name="plus" size={34} />}
                   <b>{busy === 'extract' ? 'Extraction du son…' : busy ? 'Analyse…' : 'Choisir un fichier'}</b>
-                  <span>MP3, M4A, MP4, MOV…</span>
+                  <span>Galerie ou fichiers · chanson ou vidéo</span>
                 </button>
+              )}
+              {music && videoFile && (
+                <label className="flow-keep-video">
+                  <Icon name="video" size={18} />
+                  <span>Garder l’image comme vidéo de référence</span>
+                  <input type="checkbox" className="switch" checked={keepVideo} onChange={(e) => setKeepVideo(e.target.checked)} />
+                </label>
               )}
               {error && <p className="error-text">{error}</p>}
               <input

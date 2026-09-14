@@ -14,6 +14,8 @@ class Playback {
   private anchorTime = 0;
   private anchorNow = 0;
   private lastAudioTime = -1;
+  /** When audio.currentTime last changed (it moves in coarse steps). */
+  private audioSampleNow = 0;
   private lastPlayAttempt = 0;
   private lastBeat = -1;
 
@@ -104,11 +106,22 @@ class Playback {
       if (t < dur) {
         if (!this.audio.paused) {
           const at = this.audio.currentTime;
-          const moving = at !== this.lastAudioTime;
-          this.lastAudioTime = at;
-          if (moving && Math.abs(at - t) > 0.12) {
-            this.anchor(at, now);
-            t = at;
+          if (at !== this.lastAudioTime) {
+            // currentTime advances in coarse steps (about 250 ms in Safari) and is read late when the page is busy
+            // (e.g. decoding the reference video): extrapolate it instead of snapping the clock back to a stale value
+            this.lastAudioTime = at;
+            this.audioSampleNow = now;
+          }
+          const audioNow = at + ((now - this.audioSampleNow) / 1000) * s.rate;
+          const drift = audioNow - t;
+          if (Math.abs(drift) > 0.5) {
+            // real jump (audio stalled or restarted): follow the music
+            this.anchor(audioNow, now);
+            t = audioNow;
+          } else if (Math.abs(drift) > 0.03) {
+            // small drift: ease towards the music, never visibly backwards
+            this.anchorTime += drift * 0.08;
+            t = Math.max(s.time, this.anchorTime + ((now - this.anchorNow) / 1000) * s.rate);
           }
         } else if (now - this.lastPlayAttempt > 1000) this.startAudio(t);
       } else if (!this.audio.paused) this.audio.pause();
