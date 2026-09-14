@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { exportBackup } from '../../lib/backup';
-import { IS_ANDROID_APP } from '../../lib/platform';
+import { IS_PHONE_APP } from '../../lib/platform';
 import { Icon } from '../common/Icon';
 import { notify } from '../common/Toast';
 import { Modal } from '../common/ui';
@@ -28,7 +28,7 @@ export function TransferDialog({ onClose, onReceive }: { onClose: () => void; on
             <Icon name="upload" size={22} />
           </span>
           <b>{busy ? 'Préparation…' : 'Envoyer'}</b>
-          <span>{IS_ANDROID_APP ? 'Partager le fichier (Drive, WhatsApp…)' : 'Télécharger un fichier avec tout'}</span>
+          <span>{IS_PHONE_APP ? 'Partager le fichier (Drive, WhatsApp…)' : 'Télécharger un fichier avec tout'}</span>
         </button>
         <button
           className="transfer-tile"

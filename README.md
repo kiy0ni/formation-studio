@@ -43,6 +43,22 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 
 **Mettre à jour le site** : `npm run deploy` (construit l'app et la publie sur la branche `gh-pages`). Les apps déjà installées récupèrent la nouvelle version au prochain lancement avec internet.
 
+## Comptes et synchronisation (Supabase, gratuit)
+
+- Projet Supabase gratuit (Paris/Irlande). L’app n’embarque que l’adresse et la clé *publishable* (`src/lib/cloud.config.json`), faites pour être publiques : chaque compte ne voit que ses propres données (règles RLS dans `supabase/schema.sql`).
+- Réappliquer le schéma / recréer un projet : `npm run setup:cloud` (token d’accès personnel dans `~/.formation-studio/supabase-token`, jamais commité).
+- Mot de passe oublié : `npm run setup:cloud -- reset-password <email> <nouveau>`.
+- Un projet gratuit se met en pause après 7 jours sans aucune activité. Anti-pause, une fois par jour sur un serveur toujours allumé :
+  ```
+  0 9 * * * curl -fsS -X POST "https://tjowfhkiioppzyfwlrqw.supabase.co/rest/v1/rpc/keepalive" -H "apikey: sb_publishable_2XLACOdpzS8jbDjeD1dCuQ_ZB0DL-M3" -H "content-type: application/json" -d "{}" > /dev/null
+  ```
+
+## iPhone
+
+- Le plus simple : Safari → le site → Partager → « Sur l’écran d’accueil » (gratuit, permanent, même compte).
+- App native (projet `ios/`) : `npm run build:ios` ouvre Xcode ; branchez l’iPhone, choisissez votre identifiant Apple dans *Signing & Capabilities*, puis ▶. Sans compte Apple Developer (99 €/an), l’app installée expire après 7 jours et se réinstalle de la même façon.
+- Vérifier que ça compile sans iPhone : `npm run build:ios -- --check`.
+
 ## Démarrage (développement)
 
 ```bash
@@ -66,7 +82,8 @@ npm run lan        # accessible depuis les téléphones du même réseau Wi-Fi
 - Panneaux en sections repliables expliquées : l'essentiel visible, le reste à un clic.
 - Version téléphone façon app : création pas à pas, barre d'outils en bas (Formes · Formation · Membres · Objets · Plus), barre d'actions sur la sélection, timeline repliable, pincer pour zoomer.
 - Objets de scène prêts à l'emploi (chaise, tabouret, banc, table, podium, écran, plateforme, micro).
-- Transfert vers un autre appareil : Bibliothèque → ⋯ → Transférer (Envoyer / Recevoir).
+- **Comptes** (e-mail + mot de passe) : bibliothèque synchronisée entre tous les appareils (chorégraphies, équipes, dossiers, musiques), hors ligne d’abord, la modification la plus récente l’emporte.
+- Transfert sans compte : Bibliothèque → ⋯ → Transférer (Envoyer / Recevoir).
 - Enregistrement automatique visible (« ✓ Enregistré »), sélecteur de chorégraphies dans l'éditeur, plusieurs fenêtres synchronisées.
 
 **Placement**

@@ -4,6 +4,10 @@ import { Capacitor } from '@capacitor/core';
 export const IS_ELECTRON = /Electron\//.test(navigator.userAgent);
 /** Android app built with Capacitor. */
 export const IS_ANDROID_APP = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+/** iPhone app built with Capacitor. */
+export const IS_IOS_APP = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+/** Phone apps (Android, iPhone): files go through the share sheet, printing through the system service. */
+export const IS_PHONE_APP = Capacitor.isNativePlatform();
 export const IS_NATIVE_APP = IS_ELECTRON || Capacitor.isNativePlatform();
 /** Phones apps have a single screen: no extra windows. */
 export const CAN_OPEN_WINDOWS = !Capacitor.isNativePlatform();

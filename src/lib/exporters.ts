@@ -1,9 +1,9 @@
 import { uid } from './id';
-import { IS_ANDROID_APP } from './platform';
+import { IS_PHONE_APP } from './platform';
 import type { Choreo, Vec } from './types';
 
 export async function download(name: string, blob: Blob) {
-  if (IS_ANDROID_APP) {
+  if (IS_PHONE_APP) {
     const { saveAndShare } = await import('./nativeFiles');
     return saveAndShare(name, blob);
   }

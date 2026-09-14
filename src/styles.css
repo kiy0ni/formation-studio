@@ -4545,3 +4545,87 @@ input[type='checkbox'].switch {
 .prop-preset .prop-shape {
   margin-block: auto;
 }
+
+/* account */
+.account-btn {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.account-btn.big {
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+}
+.account-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  background: var(--ok, #34d399);
+}
+.account-btn.syncing .account-dot {
+  background: var(--accent-2);
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+.account-btn.offline .account-dot {
+  background: var(--faint);
+}
+.account-btn.error .account-dot {
+  background: var(--warn);
+}
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.account-form .hint {
+  margin: 0;
+}
+.account-form input {
+  font-size: 16px;
+  padding: 13px 14px;
+  border-radius: 12px;
+}
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 14px;
+}
+.account-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.account-meta span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.account-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.account-actions .btn {
+  flex: 1;
+}
+@media (max-width: 860px) {
+  .lib-actions .account-btn {
+    margin: 0 4px;
+  }
+}

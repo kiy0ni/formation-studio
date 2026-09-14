@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { CollabSession, downloadAudio } from '../../collab/client';
+import { fetchCloudAudio } from '../../lib/cloud';
 import { db } from '../../lib/db';
 import { insertFormationAfter, itemIndexAt, timeline } from '../../lib/model';
 import { navigate } from '../../lib/router';
@@ -104,7 +105,7 @@ export function EditorPage({ id }: { id: string }) {
   useEffect(() => {
     if (status !== 'ready') return;
     const link = useEditor.getState().doc?.collab;
-    loadMusic(musicHash, link ? (h) => downloadAudio(link, h) : undefined);
+    loadMusic(musicHash, link ? (h) => downloadAudio(link, h) : fetchCloudAudio);
   }, [musicHash, status, collabKey]);
 
   useEffect(() => {

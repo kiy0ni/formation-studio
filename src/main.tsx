@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { startCloud } from './lib/cloud';
 import './lib/install';
 import { IS_ANDROID_APP, IS_NATIVE_APP } from './lib/platform';
 import { useEditor } from './store/editor';
@@ -24,6 +25,8 @@ document.addEventListener(
   },
   { passive: false },
 );
+
+startCloud();
 
 // ask the browser not to evict the offline library (IndexedDB) under storage pressure
 navigator.storage?.persist?.().catch(() => {});

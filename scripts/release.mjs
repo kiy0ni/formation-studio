@@ -40,7 +40,7 @@ const notes = `## Installer Formation Studio ${pkg.version}
 
 Ces avertissements viennent du fait que l’app est distribuée hors des stores ; ils n’apparaissent qu’une fois.
 
-Les chorégraphies restent sur chaque appareil. Pour continuer ailleurs : Bibliothèque → ⋯ → Transférer → Envoyer, puis Recevoir sur l’autre appareil.`;
+**Compte** : icône profil dans la bibliothèque → Créer un compte. Connectez-vous avec le même compte sur chaque appareil (Mac, Windows, Android, iPhone) : tout se synchronise, musiques comprises.`;
 
 const gh = (args) => execFileSync('gh', args, { cwd: root, stdio: 'inherit' });
 let exists = true;

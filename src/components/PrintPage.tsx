@@ -5,12 +5,12 @@ import { initials, samplePath, textOn } from '../lib/geometry';
 import { formatTime, sortedDancers, sortedFormations, sortedProps, timeline, totalDuration } from '../lib/model';
 import { navigate } from '../lib/router';
 import type { Choreo, Formation, ID } from '../lib/types';
-import { IS_ANDROID_APP } from '../lib/platform';
+import { IS_PHONE_APP } from '../lib/platform';
 import { Icon } from './common/Icon';
 
 /** Browsers and the desktop app use the print dialog; the Android app calls the system print service. */
 async function printPage(name: string) {
-  if (!IS_ANDROID_APP) return window.print();
+  if (!IS_PHONE_APP) return window.print();
   const { registerPlugin } = await import('@capacitor/core');
   const printer = registerPlugin<{ print: (options: { name: string }) => Promise<void> }>('FsPrint');
   await printer.print({ name });

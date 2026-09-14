@@ -173,17 +173,18 @@ const SECTIONS: GuideSection[] = [
   },
   {
     id: 'transfer',
-    icon: 'swap',
-    title: 'Autre appareil',
-    intro: 'Continuer sur Mac, Android…',
+    icon: 'cloud',
+    title: 'Compte et appareils',
+    intro: 'Mac, téléphone : la même bibliothèque.',
     body: (
       <ul>
-        <li>Tout s’enregistre tout seul, sur l’appareil, même hors ligne.</li>
         <li>
-          Bibliothèque → <B>⋯</B> → <B>Transférer</B> → <B>Envoyer</B> : un fichier avec tout (musiques comprises).
+          Bibliothèque → icône <B>profil</B> → <B>Créer un compte</B> (e-mail + mot de passe).
         </li>
+        <li>Même compte sur chaque appareil : chorégraphies, équipes, dossiers et musiques se synchronisent seuls.</li>
+        <li>Sans internet, tout marche. La synchro reprend au retour du réseau.</li>
         <li>
-          Sur l’autre appareil : <B>Transférer</B> → <B>Recevoir</B> et choisissez ce fichier.
+          Sans compte : <B>⋯</B> → <B>Transférer</B> → <B>Envoyer</B>, puis <B>Recevoir</B> sur l’autre appareil.
         </li>
         <li>
           Une seule chorégraphie : <B>⋯</B> sur sa carte → <B>Envoyer</B>.

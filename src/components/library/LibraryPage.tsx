@@ -20,6 +20,7 @@ import { Menu, MenuItem, Modal } from '../common/ui';
 import { DiscoverView } from './DiscoverView';
 import { InstallButton } from './InstallButton';
 import { NewChoreoFlow } from './NewChoreoFlow';
+import { AccountButton } from './AccountButton';
 import { ProfileButton } from './ProfileButton';
 import { TeamsView } from './TeamsView';
 import { TransferDialog } from './TransferDialog';
@@ -78,7 +79,7 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
   );
 
   const save = async (doc: Choreo) => {
-    await db.saveChoreo(doc);
+    await db.saveChoreo({ ...doc, updatedAt: Date.now() });
     await refresh();
   };
 
@@ -167,6 +168,7 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
             <Icon name="search" size={20} />
           </button>
           <InstallButton />
+          <AccountButton />
           {COLLAB_ENABLED && <ProfileButton />}
           <Menu trigger={<button className="icon-btn" aria-label="Plus"><Icon name="dots" size={20} /></button>}>
             {(close) => (
@@ -369,7 +371,7 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
             editingFolder.id
               ? async () => {
                   if (!confirm(`Supprimer le dossier « ${editingFolder.name} » ? Les chorégraphies restent.`)) return;
-                  await Promise.all(choreos.filter((c) => c.folderId === editingFolder.id).map((c) => db.saveChoreo({ ...c, folderId: null })));
+                  await Promise.all(choreos.filter((c) => c.folderId === editingFolder.id).map((c) => db.saveChoreo({ ...c, folderId: null, updatedAt: Date.now() })));
                   await db.deleteFolder(editingFolder.id);
                   setFolder('all');
                   await refresh();

@@ -131,6 +131,7 @@ export interface Folder {
   id: ID;
   name: string;
   color: string;
+  updatedAt?: number;
 }
 
 /** Evaluated state at a given time. */

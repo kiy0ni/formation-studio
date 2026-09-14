@@ -1,7 +1,7 @@
 {
   "name": "formation-studio",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "description": "Formation Studio - createur de formations de danse K-pop synchronisees avec la musique",
   "scripts": {
@@ -15,7 +15,9 @@
     "deploy": "sh scripts/deploy-pages.sh",
     "build:desktop": "node scripts/build-desktop.mjs",
     "build:android": "node scripts/build-android.mjs",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "setup:cloud": "node scripts/setup-cloud.mjs",
+    "build:ios": "node scripts/build-ios.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -25,8 +27,10 @@
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.2",
     "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/ios": "^8.5.2",
     "@capacitor/share": "^8.0.1",
     "@mediabunny/aac-encoder": "^1.56.2",
+    "@supabase/supabase-js": "^2.116.0",
     "idb-keyval": "^6.3.0",
     "immer": "^11.1.18",
     "mediabunny": "^1.56.2",
