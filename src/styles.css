@@ -1122,7 +1122,7 @@ kbd {
   /* pinned to the screen: the browser toolbar showing/hiding never shifts the editor */
   position: fixed;
   inset: 0;
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
@@ -3534,7 +3534,7 @@ kbd {
 }
 .library {
   background: var(--bg);
-  min-height: 100dvh;
+  min-height: var(--app-height, 100dvh);
 }
 .btn.primary,
 .btn.primary:hover:not(:disabled) {
@@ -3726,7 +3726,7 @@ kbd {
 }
 .flow {
   width: min(460px, 100vw);
-  height: min(760px, 100dvh);
+  height: min(760px, var(--app-height, 100dvh));
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 22px;
@@ -4374,7 +4374,7 @@ kbd {
   }
   .flow {
     width: 100vw;
-    height: 100dvh;
+    height: var(--app-height, 100dvh);
     border: 0;
     border-radius: 0;
   }
@@ -4904,7 +4904,7 @@ input[type='checkbox'].switch {
   --p-num: #9b9ba7;
   background: var(--p-bg);
   color: var(--p-text);
-  min-height: 100dvh;
+  min-height: var(--app-height, 100dvh);
 }
 .print-toolbar {
   background: var(--p-bg);
@@ -4971,7 +4971,7 @@ input[type='checkbox'].switch {
   .library {
     position: fixed;
     inset: 0;
-    height: 100dvh;
+    height: var(--app-height, 100dvh);
     min-height: 0;
     overflow: hidden;
     display: flex;

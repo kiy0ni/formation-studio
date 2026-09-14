@@ -28,6 +28,19 @@ document.addEventListener(
 
 startCloud();
 
+// iPhone home-screen app: the reported viewport leaves out the status bar and home indicator areas,
+// so full-screen layouts stopped short of the bottom. Size them to the real screen instead.
+if ((navigator as unknown as { standalone?: boolean }).standalone === true) {
+  const fit = () => {
+    const portrait = matchMedia('(orientation: portrait)').matches;
+    const screenHeight = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+    document.documentElement.style.setProperty('--app-height', `${Math.max(window.innerHeight, screenHeight)}px`);
+  };
+  fit();
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', () => setTimeout(fit, 300));
+}
+
 // ask the browser not to evict the offline library (IndexedDB) under storage pressure
 navigator.storage?.persist?.().catch(() => {});
 
