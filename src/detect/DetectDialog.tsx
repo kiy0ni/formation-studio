@@ -8,7 +8,7 @@ import type { ID } from '../lib/types';
 import { useEditor } from '../store/editor';
 import { loadAnalysis, loadApplied, PRECISION, saveApplied, type Analysis, type Precision, type ReviewSettings, type Swap } from './analysis';
 import { fitFloor } from './floor';
-import { alignToGrid, applyDetection, applySwaps, buildGhosts, centerFormations, DEFAULT_PLACEMENT, defaultMapping, findFormations, placeTracks, positionsOver, type ApplyMode, type Placement } from './formations';
+import { alignToGrid, applyDetection, applySwaps, buildGhosts, centerFormations, centreOf, DEFAULT_PLACEMENT, defaultMapping, findFormations, placeTracks, positionsOver, type ApplyMode, type Placement } from './formations';
 import { cancelAnalysis, startAnalysis, useDetect } from './store';
 import { crops, thumbFor, trackPeople } from './track';
 
@@ -153,7 +153,8 @@ function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; sav
   const tracking = useMemo(() => trackPeople(analysis, floor, people || undefined), [analysis, floor, people]);
   const [swaps, setSwaps] = useState<Swap[]>(saved?.swaps ?? []);
   const tracks = useMemo(() => applySwaps(tracking.tracks, swaps), [tracking, swaps]);
-  const [placement, setPlacement] = useState<Placement>(saved?.placement ?? DEFAULT_PLACEMENT);
+  // choices saved before 2.2.1 centred every formation on its middle dancer: start again from the middle of the room
+  const [placement, setPlacement] = useState<Placement>(saved?.placement?.centre ? saved.placement : { ...(saved?.placement ?? DEFAULT_PLACEMENT), centre: 'room', shift: 0, center: undefined });
   // formations come from the tracking before any exchange: exchanging two people changes who, not when
   const unswapped = useMemo(() => placeTracks(tracking.tracks, stage, placement), [tracking, stage, placement]);
   const placed = useMemo(() => (swaps.length ? placeTracks(tracks, stage, placement) : unswapped), [swaps.length, tracks, stage, placement, unswapped]);
@@ -161,15 +162,16 @@ function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; sav
   const found = useMemo(() => findFormations(unswapped.tracks, analysis.times, analysis.fps, sensitivity), [unswapped, analysis, sensitivity]);
   const formations = useMemo(() => {
     const raw = placed === unswapped ? found : found.map((f) => ({ ...f, positions: positionsOver(placed.tracks, f.ranges) }));
-    return placement.center === false ? raw : centerFormations(raw);
-  }, [found, placed, unswapped, placement.center]);
+    return centreOf(placement) === 'group' ? centerFormations(raw) : raw;
+  }, [found, placed, unswapped, placement]);
   const [selected, setSelected] = useState(0);
   const index = Math.max(0, Math.min(selected, formations.length - 1));
   const current = formations[index];
   const [picked, setPicked] = useState<number[]>([]);
   const [mode, setMode] = useState<ApplyMode>(saved?.mode ?? 'all');
   const [snap, setSnap] = useState(saved?.snap ?? true);
-  const [recenter, setRecenter] = useState(saved?.recenter ?? true);
+  // off by default: dancers stay where they are in the video (the one in the middle stays in the middle)
+  const [regroup, setRegroup] = useState(saved?.regroup ?? false);
   const [grid, setGrid] = useState(saved?.grid ?? stage.snap);
   const [paths, setPaths] = useState(saved?.paths ?? true);
   const [checking, setChecking] = useState(false);
@@ -225,11 +227,11 @@ function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; sav
     const before = useEditor.getState().doc!;
     let result: ReturnType<typeof applyDetection> = { message: '', anchors: [] };
     useEditor.getState().update('Détection automatique', (d) => {
-      result = applyDetection(d, before, { mode, formations, tracks: placed.tracks, times: analysis.times, mapping, recenter, snap, grid, paths, center: placement.center !== false });
+      result = applyDetection(d, before, { mode, formations, tracks: placed.tracks, times: analysis.times, mapping, recenter: regroup, snap, grid, paths, center: centreOf(placement) === 'group' });
     });
     const { message } = result;
     const ghosts = buildGhosts(analysis, placed.tracks, mapping, before.dancers, result.anchors);
-    const review: ReviewSettings = { people, swaps, placement, sensitivity, mapping, mode, snap, recenter, grid, paths, transform: placed.transform };
+    const review: ReviewSettings = { people, swaps, placement, sensitivity, mapping, mode, snap, regroup, grid, paths, transform: placed.transform };
     void saveApplied(analysis.hash, before.id, { review, ghosts });
     useDetect.setState({ ghosts: { choreoId: before.id, data: ghosts } });
     notify(`${message} · Annuler pour revenir en arrière`);
@@ -351,7 +353,36 @@ function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; sav
               onChange={(v) => setPlacement({ ...placement, depth: DEPTHS[v] })}
             />
           </div>
-          <Toggle checked={placement.center !== false} onChange={(center) => setPlacement({ ...placement, center })} label="Centrer chaque formation" />
+          <div className="detect-row">
+            <span>Centre de la scène</span>
+            <Segmented
+              value={centreOf(placement)}
+              options={[
+                { value: 'room', label: 'Milieu de la salle' },
+                { value: 'group', label: 'Milieu du groupe' },
+              ]}
+              onChange={(centre) => setPlacement({ ...placement, centre, center: undefined })}
+            />
+          </div>
+          <span className="hint">
+            {centreOf(placement) === 'room'
+              ? 'Le milieu de la vidéo est le centre de la scène : chacun garde sa place par rapport à la salle.'
+              : 'Chaque formation est centrée sur son danseur du milieu (caméra pas au milieu de la salle).'}
+          </span>
+          {centreOf(placement) === 'room' && (
+            <div className="detect-row">
+              <span>Décaler le centre</span>
+              <Stepper
+                value={placement.shift ?? 0}
+                min={-3}
+                max={3}
+                step={0.25}
+                onChange={(shift) => setPlacement({ ...placement, shift })}
+                label="Décaler le centre"
+                format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(2).replace('.', ',')} m`}
+              />
+            </div>
+          )}
           <Toggle checked={placement.fill} onChange={(fill) => setPlacement({ ...placement, fill })} label="Agrandir pour occuper la scène" />
           <Toggle checked={placement.flip} onChange={(flip) => setPlacement({ ...placement, flip })} label="Inverser gauche / droite" />
           <Toggle checked={grid} onChange={setGrid} label="Aligner sur les repères de la scène" />
@@ -402,7 +433,12 @@ function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; sav
             })}
           </div>
           {checking && <span className="hint">Chaque ligne doit montrer la même personne. Sinon : touchez deux personnes sur la scène pour les échanger à partir d’une formation.</span>}
-          {mapped > 0 && mapped < count && <Toggle checked={recenter} onChange={setRecenter} label="Recentrer les danseurs gardés" />}
+          {mapped > 0 && mapped < count && (
+            <>
+              <Toggle checked={regroup} onChange={setRegroup} label="Resserrer les danseurs gardés au centre" />
+              <span className="hint">{regroup ? 'Les danseurs gardés se rapprochent du centre (leurs places changent).' : 'Chacun garde sa place de la vidéo : celui du milieu reste au milieu.'}</span>
+            </>
+          )}
 
           <h4>Appliquer</h4>
           <Segmented
