@@ -223,11 +223,12 @@ function Review({ analysis, saved, onClose, onAgain }: { analysis: Analysis; sav
 
   const apply = () => {
     const before = useEditor.getState().doc!;
-    let message = '';
+    let result: ReturnType<typeof applyDetection> = { message: '', anchors: [] };
     useEditor.getState().update('Détection automatique', (d) => {
-      message = applyDetection(d, before, { mode, formations, tracks: placed.tracks, times: analysis.times, mapping, recenter, snap, grid, paths });
+      result = applyDetection(d, before, { mode, formations, tracks: placed.tracks, times: analysis.times, mapping, recenter, snap, grid, paths, center: placement.center !== false });
     });
-    const ghosts = buildGhosts(analysis, placed.tracks, mapping, before.dancers);
+    const { message } = result;
+    const ghosts = buildGhosts(analysis, placed.tracks, mapping, before.dancers, result.anchors);
     const review: ReviewSettings = { people, swaps, placement, sensitivity, mapping, mode, snap, recenter, grid, paths, transform: placed.transform };
     void saveApplied(analysis.hash, before.id, { review, ghosts });
     useDetect.setState({ ghosts: { choreoId: before.id, data: ghosts } });

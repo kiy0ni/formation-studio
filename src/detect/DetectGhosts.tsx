@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AUTO_DETECT_ENABLED } from '../lib/config';
 import { useEditor } from '../store/editor';
 import { loadApplied } from './analysis';
+import { ghostAt } from './formations';
 import { useDetect } from './store';
 import './detect.css';
 
@@ -29,7 +30,9 @@ export function DetectGhosts({ time, radius }: { time: number; radius: number })
 
   if (!AUTO_DETECT_ENABLED || !show || !ghosts) return null;
   const length = ghosts.tracks[0]?.xs.length ?? 0;
-  const f = (time + offset - ghosts.start) * ghosts.fps;
+  // same clock and same placement as the formations that were written (beats, centring, stage marks)
+  const at = ghostAt(ghosts, time, offset);
+  const f = (at.v - ghosts.start) * ghosts.fps;
   if (!length || f < -2 || f > length + 2) return null;
   const i = Math.max(0, Math.min(length - 1, Math.floor(f)));
   const j = Math.min(length - 1, i + 1);
@@ -37,7 +40,14 @@ export function DetectGhosts({ time, radius }: { time: number; radius: number })
   return (
     <g className="detect-ghosts" pointerEvents="none">
       {ghosts.tracks.map((t, n) => (
-        <circle key={n} cx={t.xs[i] + (t.xs[j] - t.xs[i]) * k} cy={t.ys[i] + (t.ys[j] - t.ys[i]) * k} r={radius} stroke={t.color} fill={t.color} />
+        <circle
+          key={n}
+          cx={t.xs[i] + (t.xs[j] - t.xs[i]) * k + (at.dx?.[n] ?? 0)}
+          cy={t.ys[i] + (t.ys[j] - t.ys[i]) * k + (at.dy?.[n] ?? 0)}
+          r={radius}
+          stroke={t.color}
+          fill={t.color}
+        />
       ))}
     </g>
   );
