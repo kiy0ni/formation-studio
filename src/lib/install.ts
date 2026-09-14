@@ -1,3 +1,4 @@
+import { REPO } from './platform';
 // Captures the browser's install prompt as early as possible (imported from main.tsx).
 
 interface InstallPromptEvent extends Event {
@@ -74,5 +75,5 @@ export function detectPlatform(): Platform {
 /** Terminal line that installs the latest Mac app without the "downloaded from the internet" block. */
 export function macInstallCommand(intel: boolean) {
   const file = intel ? 'Lineup-mac-intel.dmg' : 'Lineup-mac-apple-silicon.dmg';
-  return `curl -L -o /tmp/Lineup.dmg https://github.com/kiy0ni/formation-studio/releases/latest/download/${file} && hdiutil attach -nobrowse -mountpoint /tmp/lineup-dmg /tmp/Lineup.dmg && rm -rf /Applications/Lineup.app && ditto /tmp/lineup-dmg/Lineup.app /Applications/Lineup.app && hdiutil detach /tmp/lineup-dmg && open /Applications/Lineup.app`;
+  return `curl -L -o /tmp/Lineup.dmg https://github.com/${REPO}/releases/latest/download/${file} && hdiutil attach -nobrowse -mountpoint /tmp/lineup-dmg /tmp/Lineup.dmg && rm -rf /Applications/Lineup.app && ditto /tmp/lineup-dmg/Lineup.app /Applications/Lineup.app && hdiutil detach /tmp/lineup-dmg && open /Applications/Lineup.app`;
 }

@@ -32,7 +32,7 @@ const notes = `## Installer Lineup ${pkg.version}
 | Mac avec processeur Intel | **Lineup-mac-intel.dmg** |
 | Windows 10 / 11 | **Lineup-windows.exe** |
 | Android | **Lineup-android.apk** |
-| iPhone / iPad | Ouvrez https://kiy0ni.github.io/formation-studio/ dans Safari → Partager → « Sur l’écran d’accueil » |
+| iPhone / iPad | Ouvrez https://kiy0ni.github.io/lineup/ dans Safari → Partager → « Sur l’écran d’accueil » |
 
 ### Premier lancement
 - **Mac** : ouvrez le .dmg et glissez Lineup dans Applications. Au premier lancement, si macOS bloque l’app : Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».
@@ -65,4 +65,4 @@ if (exists) {
 } else {
   gh(['release', 'create', tag, ...files, '--title', `Lineup ${pkg.version}`, '--notes', notes, '--latest']);
 }
-console.log(`✓ https://github.com/kiy0ni/formation-studio/releases/tag/${tag}`);
+console.log(`✓ https://github.com/kiy0ni/lineup/releases/tag/${tag}`);

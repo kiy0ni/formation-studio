@@ -3,7 +3,7 @@
 import { chromium } from 'playwright-core';
 
 const SP = process.env.SP;
-const BASE = 'http://127.0.0.1:8811/formation-studio/';
+const BASE = 'http://127.0.0.1:8811/lineup/';
 const URL_ = 'https://tjowfhkiioppzyfwlrqw.supabase.co';
 // service key of the account service (creates and removes the audit account): never in the repository
 import { readFileSync } from 'node:fs';

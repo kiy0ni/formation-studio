@@ -17,7 +17,7 @@ for (const [name, opts] of [
   const page = await ctx.newPage();
   const touch = !!opts.hasTouch;
   const tap = (sel) => (touch ? page.tap(sel) : page.click(sel));
-  await page.goto('http://127.0.0.1:8811/formation-studio/');
+  await page.goto('http://127.0.0.1:8811/lineup/');
   await page.waitForSelector('.lib-top');
   await tap(touch ? '.fab' : '.new-btn');
   await tap('.flow-foot .btn.primary');
@@ -26,7 +26,7 @@ for (const [name, opts] of [
   await page.fill('.flow-input', 'Cover avec un nom assez long pour la carte');
   await tap('.flow-foot .btn.primary');
   await page.waitForSelector('g.dancer');
-  await page.goto('http://127.0.0.1:8811/formation-studio/');
+  await page.goto('http://127.0.0.1:8811/lineup/');
   await page.waitForSelector('.card-menu-btn');
   const box = await page.$eval('.card-menu-btn', (e) => { const r = e.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; });
   await page.screenshot({ path: `${SP}/card-menu-${name}.png` });

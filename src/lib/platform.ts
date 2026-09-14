@@ -14,7 +14,7 @@ export const CAN_OPEN_WINDOWS = !Capacitor.isNativePlatform() && !(typeof matchM
 
 export const APP_VERSION: string = __APP_VERSION__;
 
-const REPO = 'kiy0ni/formation-studio';
+export const REPO = 'kiy0ni/lineup';
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`;
 const asset = (name: string) => `https://github.com/${REPO}/releases/latest/download/${name}`;
 export const DOWNLOADS = {
