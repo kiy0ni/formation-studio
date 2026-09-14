@@ -2055,6 +2055,104 @@ kbd {
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.5);
 }
+.tl-row {
+  touch-action: pan-x;
+}
+.tl-canvas,
+.tl-canvas-spacer {
+  touch-action: none;
+}
+.tl-grip {
+  position: absolute;
+  top: -3px;
+  height: 44px;
+  width: 22px;
+  margin-left: -11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ew-resize;
+  z-index: 3;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tl-grip i {
+  width: 6px;
+  height: 24px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 1px rgba(10, 8, 16, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s, background 0.12s;
+}
+.tl-grip.trans i {
+  background: rgba(176, 156, 255, 0.8);
+}
+.tl-grip.on i,
+.tl-grip:hover i,
+.tl-grip:active i {
+  background: #fff;
+  transform: scaleY(1.2);
+}
+.tl-bubble {
+  position: absolute;
+  top: 38px;
+  transform: translateX(-50%);
+  background: var(--surface-3);
+  border: 1px solid var(--accent);
+  font-size: 11.5px;
+  font-weight: 650;
+  padding: 3px 9px;
+  border-radius: 99px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 6;
+  box-shadow: var(--shadow);
+}
+@media (pointer: coarse) {
+  .tl-grip {
+    width: 34px;
+    margin-left: -17px;
+  }
+  .tl-grip i {
+    width: 8px;
+    height: 28px;
+  }
+}
+.num-wrap.has-stepper {
+  gap: 4px;
+}
+.num-step {
+  flex: 0 0 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 16px;
+  font-weight: 650;
+  padding: 0;
+  line-height: 1;
+}
+.num-step:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.num-wrap.has-stepper input {
+  text-align: center;
+  padding-left: 4px;
+  padding-right: 18px;
+}
+.num-wrap.has-stepper .suffix {
+  right: 42px;
+}
+@media (pointer: coarse) {
+  .num-step {
+    flex-basis: 40px;
+    font-size: 18px;
+  }
+  .num-wrap.has-stepper .suffix {
+    right: 50px;
+  }
+}
 .tl-music-end {
   position: absolute;
   top: -70px;

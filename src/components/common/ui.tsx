@@ -79,6 +79,7 @@ export function NumberField({
   label,
   disabled,
   precision = 2,
+  stepper,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -89,6 +90,8 @@ export function NumberField({
   label?: string;
   disabled?: boolean;
   precision?: number;
+  /** Shows − / + buttons that change the value by this amount. */
+  stepper?: number;
 }) {
   const [text, setText] = useState(value.toFixed(precision));
   const focused = useRef(false);
@@ -106,11 +109,17 @@ export function NumberField({
     if (c !== value) onChange(c);
   };
   return (
-    <label className="field num-field">
+    <div className="field num-field">
       {label && <span className="field-label">{label}</span>}
-      <span className="num-wrap">
+      <span className={`num-wrap ${stepper ? 'has-stepper' : ''}`}>
+        {stepper ? (
+          <button type="button" className="num-step" disabled={disabled} aria-label={`${label ?? 'Valeur'} : diminuer`} onClick={() => commit(String(value - stepper))}>
+            −
+          </button>
+        ) : null}
         <input
           inputMode="decimal"
+          aria-label={label}
           value={text}
           disabled={disabled}
           onFocus={(e) => {
@@ -133,8 +142,13 @@ export function NumberField({
           }}
         />
         {suffix && <span className="suffix">{suffix}</span>}
+        {stepper ? (
+          <button type="button" className="num-step" disabled={disabled} aria-label={`${label ?? 'Valeur'} : augmenter`} onClick={() => commit(String(value + stepper))}>
+            +
+          </button>
+        ) : null}
       </span>
-    </label>
+    </div>
   );
 }
 

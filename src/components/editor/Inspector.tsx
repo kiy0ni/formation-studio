@@ -466,10 +466,20 @@ function FormationPanel() {
 
       <Collapsible id="formation-durations" icon="clock" title="Durées" hint="Temps immobile, puis temps pour aller à la suivante" defaultOpen>
         <div className="row gap">
-          <NumberField label="Tenue" suffix="s" value={f.duration} min={0} step={0.01} disabled={readOnly} onChange={(v) => edit('Durée de formation', (d) => void (d.formations[f.id].duration = v))} />
+          <NumberField
+            label="Tenue"
+            suffix="s"
+            value={f.duration}
+            min={0}
+            step={0.01}
+            stepper={bl ?? 0.25}
+            disabled={readOnly}
+            onChange={(v) => edit('Durée de formation', (d) => void (d.formations[f.id].duration = v))}
+          />
           <NumberField
             label="Déplacement"
             suffix="s"
+            stepper={bl ?? 0.25}
             value={f.transition}
             min={0}
             step={0.01}
@@ -479,8 +489,9 @@ function FormationPanel() {
         </div>
         <p className="hint">
           {bl
-            ? `Soit ${(f.duration / bl).toFixed(1).replace('.', ',')} temps de tenue${next ? ` et ${(f.transition / bl).toFixed(1).replace('.', ',')} temps de déplacement` : ''}.`
-            : 'Astuce : vous pouvez aussi étirer les blocs directement sur la timeline.'}
+            ? `Soit ${(f.duration / bl).toFixed(1).replace('.', ',')} temps de tenue${next ? ` et ${(f.transition / bl).toFixed(1).replace('.', ',')} temps de déplacement` : ''}. − et + changent d’un temps.`
+            : '− et + changent de 0,25 s.'}
+          {' Sur la timeline, glissez les poignées ‖ entre les blocs.'}
           {!next && ' C’est la dernière formation : pas de déplacement après.'}
         </p>
         {!readOnly && prevItem && (

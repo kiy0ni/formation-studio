@@ -77,7 +77,10 @@ const SECTIONS: GuideSection[] = [
         <ul>
           <li>Chaque formation a une <b>tenue</b> (bloc plein, les membres restent en place) puis un <b>déplacement</b> (zone rayée) vers la suivante.</li>
           <li><B>+ Formation</B> (ou <K>F</K>) crée une copie de la formation à l’endroit du curseur : il ne reste qu’à déplacer les membres.</li>
-          <li>Étirez le bord droit d’un bloc sur la timeline pour changer sa durée. Avec un BPM, les bords s’aimantent aux temps (<K>Alt</K> pour désactiver).</li>
+          <li>
+            Pour changer une durée sur la timeline, glissez la poignée ‖ située entre deux blocs : la valeur s’affiche pendant le geste et la timeline défile toute seule au bord. Avec un BPM, ça s’aimante aux temps (<K>Alt</K> pour désactiver). Glisser ailleurs fait défiler la timeline.
+          </li>
+          <li>Encore plus simple, surtout sur téléphone : onglet <B>Formation</B> → boutons <b>−</b> et <b>+</b> (un temps de plus ou de moins).</li>
           <li>Pour une précision au centième de seconde : onglet <B>Formation</B> → <B>Durées</B>. <B>Commencer au curseur</B> et <B>Caler sur le temps</B> recalent le début.</li>
           <li>Le bouton ⋯ d’une carte permet de dupliquer, déplacer ou supprimer la formation.</li>
           <li><B>Notes</B> : l’intention (regard, niveau, gestuelle), visible par toutes et imprimée dans le PDF.</li>

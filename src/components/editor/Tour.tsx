@@ -37,7 +37,7 @@ const STEPS: Step[] = [
   {
     selector: '.tl-scroll',
     title: 'La timeline',
-    body: 'La musique et vos formations dans le temps. Bloc plein = formation tenue, zone rayée = déplacement vers la suivante. Étirez le bord d’un bloc pour changer sa durée.',
+    body: 'La musique et vos formations dans le temps. Bloc plein = formation tenue, zone rayée = déplacement vers la suivante. Glissez les poignées ‖ entre les blocs pour changer les durées (ou − / + dans l’onglet Formation).',
   },
   {
     selector: '.player-add',
