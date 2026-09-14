@@ -11,6 +11,7 @@ import { useSaveStatus } from '../../store/save';
 import { Icon } from '../common/Icon';
 import { FormationList } from './FormationList';
 import { Inspector, TABS } from './Inspector';
+import { SelectionBar } from './SelectionBar';
 import { Stage2D } from './Stage2D';
 import { Timeline } from './Timeline';
 import { TopBar } from './TopBar';
@@ -29,14 +30,13 @@ export function EditorPage({ id }: { id: string }) {
   const musicHash = useEditor((s) => s.doc?.music.hash);
   const [tour, setTour] = useState(false);
 
-  // load
   useEffect(() => {
     let alive = true;
     db.getChoreo(id).then((doc) => {
       if (!alive) return;
       if (!doc) return setStatus('missing');
       useEditor.getState().load(doc, doc.collab?.role === 'view');
-      useEditor.setState({ sheetOpen: false });
+      useEditor.setState({ sheetOpen: false, dialog: null });
       setStatus('ready');
     });
     return () => {
@@ -48,7 +48,7 @@ export function EditorPage({ id }: { id: string }) {
     };
   }, [id]);
 
-  // autosave: debounced, and flushed as soon as the app goes to the background (phones kill apps silently)
+  // autosave: debounced, flushed when the app goes to the background
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const flush = async () => {
@@ -101,14 +101,12 @@ export function EditorPage({ id }: { id: string }) {
     };
   }, [status, id]);
 
-  // music
   useEffect(() => {
     if (status !== 'ready') return;
     const link = useEditor.getState().doc?.collab;
     loadMusic(musicHash, link ? (h) => downloadAudio(link, h) : undefined);
   }, [musicHash, status, collabKey]);
 
-  // collaboration
   useEffect(() => {
     if (status !== 'ready' || !collabKey) return;
     const link = useEditor.getState().doc!.collab as CollabLink;
@@ -117,7 +115,6 @@ export function EditorPage({ id }: { id: string }) {
     return () => session.stop();
   }, [status, collabKey, id]);
 
-  // guided tour: first visit, or on demand from the Help menu
   useEffect(() => {
     if (status !== 'ready') return;
     const show = () => setTour(true);
@@ -135,10 +132,9 @@ export function EditorPage({ id }: { id: string }) {
     return (
       <div className="center-screen">
         <div className="empty">
-          <h2>Chorégraphie introuvable</h2>
-          <p>Elle a peut-être été supprimée de cet appareil.</p>
+          <h2>Introuvable</h2>
           <button className="btn primary" onClick={() => navigate('/')}>
-            Retour à la bibliothèque
+            Bibliothèque
           </button>
         </div>
       </div>
@@ -150,7 +146,8 @@ export function EditorPage({ id }: { id: string }) {
       </div>
     );
 
-  const openTab = (t: InspectorTab) => useEditor.setState(sheetOpen && tab === t ? { sheetOpen: false } : { tab: t, sheetOpen: true });
+  const openTab = (t: InspectorTab) =>
+    useEditor.setState(sheetOpen && (tab === t || (t === 'more' && (tab === 'music' || tab === 'stage'))) ? { sheetOpen: false } : { tab: t, sheetOpen: true });
 
   return (
     <div className={`editor ${sheetOpen ? 'sheet-open' : ''}`}>
@@ -166,66 +163,63 @@ export function EditorPage({ id }: { id: string }) {
             </Suspense>
           )}
           <CoachTip />
+          <SelectionBar />
         </div>
         <Inspector />
       </div>
       <Timeline />
-      <nav className="mobile-nav" aria-label="Réglages">
-        {TABS.map((t) => (
-          <button key={t.id} className={sheetOpen && tab === t.id ? 'on' : ''} onClick={() => openTab(t.id)}>
-            <Icon name={t.icon} size={19} />
-            <span>{t.label}</span>
-          </button>
-        ))}
+      <nav className="toolbar" aria-label="Outils">
+        {TABS.filter((t) => t.phone).map((t) => {
+          const on = sheetOpen && (tab === t.id || (t.id === 'more' && (tab === 'music' || tab === 'stage')));
+          return (
+            <button key={t.id} className={on ? 'on' : ''} onClick={() => openTab(t.id)}>
+              <Icon name={t.icon} size={22} />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
       </nav>
-      {sheetOpen && <div className="sheet-backdrop" onClick={() => useEditor.setState({ sheetOpen: false })} />}
       {tour && <Tour onClose={() => setTour(false)} />}
     </div>
   );
 }
 
-/** Contextual "what to do next" card for the first steps. */
+/** One short "what next" hint during the first steps. */
 function CoachTip() {
   const count = useEditor((s) => Object.keys(s.doc!.formations).length);
   const hasMusic = useEditor((s) => !!s.doc!.music.hash);
-  const readOnly = useEditor((s) => s.readOnly);
-  const playing = useEditor((s) => s.playing);
-  const [hidden, setHidden] = useState(() => {
+  const hide = useEditor((s) => s.readOnly || s.playing || s.selected.length > 0);
+  const [off, setOff] = useState(() => {
     try {
       return localStorage.getItem('fs-coach-off') === '1';
     } catch {
       return false;
     }
   });
-  if (hidden || readOnly || playing || count > 2) return null;
+  if (off || hide || count > 2) return null;
   const tip = !hasMusic
-    ? { title: 'Ajoutez la musique', body: 'Importez la chanson pour caler les formations sur les temps et voir les comptes « 5, 6, 7, 8 ».', label: 'Importer la musique', tab: 'music' as InspectorTab }
+    ? { text: 'Ajoutez la musique', action: 'Importer', tab: 'music' as InspectorTab }
     : count === 1
-      ? { title: 'Placez la première formation', body: 'Choisissez une forme toute prête, ou glissez les membres sur la scène.', label: 'Choisir une forme', tab: 'presets' as InspectorTab }
-      : { title: 'Enchaînez les formations', body: 'Lancez la musique, mettez pause au bon moment puis « + Formation ». Le déplacement est animé tout seul.', label: null, tab: null };
+      ? { text: 'Glissez les danseurs ou choisissez une forme', action: 'Formes', tab: 'presets' as InspectorTab }
+      : { text: 'Touchez + pour la formation suivante', action: null, tab: null };
   return (
     <div className="coach-tip">
-      <Icon name="sparkles" size={18} />
-      <div>
-        <b>{tip.title}</b>
-        <p>{tip.body}</p>
-        {tip.label && tip.tab && (
-          <button className="btn small primary" onClick={() => useEditor.setState({ tab: tip.tab!, sheetOpen: true })}>
-            {tip.label}
-          </button>
-        )}
-      </div>
+      <span>{tip.text}</span>
+      {tip.action && tip.tab && (
+        <button className="btn small primary" onClick={() => useEditor.setState({ tab: tip.tab!, sheetOpen: true })}>
+          {tip.action}
+        </button>
+      )}
       <button
         className="icon-btn tiny"
-        aria-label="Masquer les astuces"
-        title="Ne plus afficher les astuces"
+        aria-label="Masquer"
         onClick={() => {
           try {
             localStorage.setItem('fs-coach-off', '1');
           } catch {
             /* ignore */
           }
-          setHidden(true);
+          setOff(true);
         }}
       >
         <Icon name="close" size={12} />
@@ -246,7 +240,6 @@ export function goToFormation(delta: number) {
   const i = itemIndexAt(items, s.time);
   const cur = items[i];
   let target = i + delta;
-  // "previous" while inside a formation goes back to its start first
   if (delta < 0 && cur && s.time > cur.start + 0.05) target = i;
   const it = items[Math.max(0, Math.min(items.length - 1, target))];
   if (it) playback.seek(it.start);
@@ -263,10 +256,9 @@ export function addFormationAtPlayhead() {
     if (!item) return;
     const f = d.formations[item.f.id];
     const elapsed = time - item.start;
-    const inHold = time <= item.holdEnd;
     newId = insertFormationAfter(d, f.id);
     const nf = d.formations[newId];
-    if (inHold && elapsed > 0.1 && elapsed < f.duration - 0.1) {
+    if (time <= item.holdEnd && elapsed > 0.1 && elapsed < f.duration - 0.1) {
       const remaining = f.duration - elapsed;
       f.duration = Math.round(elapsed * 100) / 100;
       nf.duration = Math.max(1, Math.round((remaining - f.transition) * 100) / 100);
@@ -275,7 +267,7 @@ export function addFormationAtPlayhead() {
   if (!newId) return;
   const it = timeline(useEditor.getState().doc!).find((x) => x.f.id === newId);
   if (it) playback.seek(it.start);
-  s.notify('Formation ajoutée : placez les membres');
+  requestAnimationFrame(() => document.querySelector('.formation-item.on')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }));
 }
 
 function useShortcuts() {
@@ -328,7 +320,7 @@ function useShortcuts() {
         case 'Backspace':
           if (s.selectedProp) {
             const pid = s.selectedProp;
-            s.update('Supprimer l’accessoire', (d) => {
+            s.update('Supprimer l’objet', (d) => {
               delete d.props[pid];
               for (const f of Object.values(d.formations)) delete f.props[pid];
             });

@@ -34,7 +34,7 @@ function createWindow(route = '') {
     minHeight: 560,
     show: false,
     title: 'Formation Studio',
-    backgroundColor: '#0f0d17',
+    backgroundColor: '#0c0c10',
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
@@ -56,7 +56,7 @@ function createWindow(route = '') {
   // app screens open in new app windows, web links in the browser
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith(ORIGIN)) {
-      return { action: 'allow', overrideBrowserWindowOptions: { width: 1200, height: 820, backgroundColor: '#0f0d17', autoHideMenuBar: true } };
+      return { action: 'allow', overrideBrowserWindowOptions: { width: 1200, height: 820, backgroundColor: '#0c0c10', autoHideMenuBar: true } };
     }
     shell.openExternal(url);
     return { action: 'deny' };

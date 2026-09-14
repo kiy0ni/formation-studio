@@ -19,6 +19,7 @@ export function Timeline() {
   const pps = useEditor((s) => s.pxPerSec);
   const readOnly = useEditor((s) => s.readOnly);
   const loop = useEditor((s) => s.loop);
+  const timelineOpen = useEditor((s) => s.timelineOpen);
   const peaks = useMusic((s) => s.peaks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -242,7 +243,7 @@ export function Timeline() {
   };
 
   return (
-    <div className="timeline">
+    <div className={`timeline ${timelineOpen ? '' : 'collapsed'}`}>
       <PlayerBar />
       <div className="tl-scroll" ref={scrollRef}>
         <div className="tl-content" style={{ width: contentW }}>
@@ -330,6 +331,7 @@ function PlayerBar() {
   const loading = useMusic((s) => s.loading);
   const missing = useMusic((s) => s.missing);
   const set = useEditor((s) => s.set);
+  const timelineOpen = useEditor((s) => s.timelineOpen);
   const count = countAt(music, time);
 
   return (
@@ -402,6 +404,20 @@ function PlayerBar() {
             </div>
           )}
         </Menu>
+        <IconButton
+          icon={timelineOpen ? 'down' : 'up'}
+          className="tl-toggle"
+          title={timelineOpen ? 'Masquer la timeline' : 'Afficher la timeline'}
+          onClick={() => {
+            const open = !useEditor.getState().timelineOpen;
+            set({ timelineOpen: open });
+            try {
+              localStorage.setItem('fs-timeline-open', open ? '1' : '0');
+            } catch {
+              /* private mode */
+            }
+          }}
+        />
       </div>
     </div>
   );

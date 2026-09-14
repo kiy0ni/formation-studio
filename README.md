@@ -64,7 +64,9 @@ npm run lan        # accessible depuis les téléphones du même réseau Wi-Fi
 - Nouvelle chorégraphie en 2 étapes : musique d'abord (tempo détecté, premières durées calées sur les temps), puis groupe et scène. On peut aussi glisser un MP3 sur la bibliothèque.
 - Visite guidée au premier lancement, astuces contextuelles, guide complet intégré (onglet Guide et menu Aide).
 - Panneaux en sections repliables expliquées : l'essentiel visible, le reste à un clic.
-- Version téléphone : barre d'onglets en bas, panneau glissant par-dessus la scène, bandeau de formations, pincer pour zoomer.
+- Version téléphone façon app : création pas à pas, barre d'outils en bas (Formes · Formation · Membres · Objets · Plus), barre d'actions sur la sélection, timeline repliable, pincer pour zoomer.
+- Objets de scène prêts à l'emploi (chaise, tabouret, banc, table, podium, écran, plateforme, micro).
+- Transfert vers un autre appareil : Bibliothèque → ⋯ → Transférer (Envoyer / Recevoir).
 - Enregistrement automatique visible (« ✓ Enregistré »), sélecteur de chorégraphies dans l'éditeur, plusieurs fenêtres synchronisées.
 
 **Placement**

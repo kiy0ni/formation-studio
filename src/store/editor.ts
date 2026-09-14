@@ -10,7 +10,8 @@ interface HistoryEntry {
   after: Patch;
 }
 
-export type InspectorTab = 'formation' | 'dancers' | 'presets' | 'stage' | 'music';
+export type InspectorTab = 'formation' | 'dancers' | 'presets' | 'props' | 'stage' | 'music' | 'more';
+export type EditorDialog = null | 'video' | 'share' | 'guide' | 'shortcuts';
 
 export interface EditorState {
   doc: Choreo | null;
@@ -37,6 +38,9 @@ export interface EditorState {
   tab: InspectorTab;
   /** Phone layout: the settings panel is a bottom sheet. */
   sheetOpen: boolean;
+  /** Timeline tracks visible (folded by default on phones). */
+  timelineOpen: boolean;
+  dialog: EditorDialog;
   pxPerSec: number;
   toast: { text: string; id: number } | null;
 
@@ -65,6 +69,16 @@ const emit = (p: Patch) => localListeners.forEach((fn) => fn(p));
 
 const MAX_HISTORY = 300;
 
+function readTimelineOpen() {
+  try {
+    const saved = localStorage.getItem('fs-timeline-open');
+    if (saved !== null) return saved === '1';
+  } catch {
+    /* private mode */
+  }
+  return typeof window === 'undefined' || window.innerWidth > 860;
+}
+
 export const useEditor = create<EditorState>((set, get) => ({
   doc: null,
   flat: {},
@@ -89,6 +103,8 @@ export const useEditor = create<EditorState>((set, get) => ({
   focusDancer: null,
   tab: 'presets',
   sheetOpen: false,
+  timelineOpen: readTimelineOpen(),
+  dialog: null,
   pxPerSec: 60,
   toast: null,
 

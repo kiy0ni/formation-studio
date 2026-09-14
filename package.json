@@ -1,7 +1,7 @@
 {
   "name": "formation-studio",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Formation Studio - createur de formations de danse K-pop synchronisees avec la musique",
   "scripts": {

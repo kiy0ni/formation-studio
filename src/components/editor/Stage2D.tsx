@@ -74,6 +74,23 @@ export function Stage2D() {
   const selSet = new Set(selected);
   const count = countAt(doc.music, time);
 
+  // finger-sized grab area around each dancer (at least ~24 px on screen)
+  const [pxPerM, setPxPerM] = useState(60);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const measure = () => {
+      const rect = svg.getBoundingClientRect();
+      const vb = svg.viewBox.baseVal;
+      if (vb && vb.width && vb.height) setPxPerM(Math.min(rect.width / vb.width, rect.height / vb.height));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(svg);
+    return () => ro.disconnect();
+  }, [cam.zoom, audienceTop]);
+  const touchR = Math.max((doc.stage.dancerSize / 2) * 1.35, 24 / Math.max(1, pxPerM));
+
   useEffect(() => {
     stageSvg.current = svgRef.current;
     return () => {
@@ -146,7 +163,7 @@ export function Stage2D() {
     if (e.button !== 0) return;
     e.stopPropagation();
     if (playing) playback.pause();
-    useEditor.setState({ selectedProp: pid, selected: [], tab: 'stage' });
+    useEditor.setState({ selectedProp: pid, selected: [], tab: 'props' });
     if (readOnly) return;
     const fid = ensureHold();
     if (!fid) return;
@@ -501,6 +518,7 @@ export function Stage2D() {
                 onPointerDown={(e) => onDancerDown(e, d.id)}
                 onDoubleClick={() => useEditor.setState({ tab: 'presets', sheetOpen: true })}
               >
+                <circle r={touchR} className="dancer-touch" />
                 {hit.has(d.id) && <circle r={r + 0.14} className="dancer-hit" />}
                 {sel && <circle r={r + 0.08} className="dancer-sel" />}
                 <circle r={r} fill={d.color} className="dancer-body" />
@@ -570,19 +588,7 @@ export function Stage2D() {
         </button>
       </div>
 
-      {selected.length > 0 && !playing && (
-        <div className="stage-overlay bottom-center only-sm">
-          <button className="sel-chip" onClick={() => useEditor.setState({ tab: 'presets', sheetOpen: true })}>
-            <Icon name="wand" size={15} /> {selected.length} sélectionné{selected.length > 1 ? 's' : ''} · Ajuster
-          </button>
-        </div>
-      )}
-
-      {editable && (
-        <div className="stage-overlay bottom-left hint-chip hide-sm">
-          {selected.length ? `${selected.length} sélectionné${selected.length > 1 ? 's' : ''} · glisser pour déplacer · Alt = libre` : 'Cliquez un danseur ou tracez un cadre pour sélectionner'}
-        </div>
-      )}
+      {editable && !selected.length && <div className="stage-overlay bottom-left hint-chip hide-sm">Glissez un danseur · cadre = plusieurs</div>}
     </div>
   );
 }

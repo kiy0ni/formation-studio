@@ -261,7 +261,41 @@ export function ColorSwatches({ value, onChange, colors = DANCER_COLORS }: { val
  * Menu / popover layer rendered on top of the whole page (never clipped by cards, panels or the
  * phone bottom sheet). Opens below or above its anchor depending on the room, and stays on screen.
  */
-function Floating({
+/** Big − value + control, like native phone apps. */
+export function Stepper({
+  value,
+  onChange,
+  min = 0,
+  max = 99,
+  step = 1,
+  label,
+  size = 'normal',
+  format = (v: number) => String(v),
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  label?: string;
+  size?: 'normal' | 'big';
+  format?: (v: number) => string;
+}) {
+  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
+  return (
+    <div className={`stepper ${size}`} role="group" aria-label={label}>
+      <button type="button" aria-label={`${label ?? ''} moins`} disabled={value <= min} onClick={() => onChange(clamp(value - step))}>
+        <Icon name="minus" size={size === 'big' ? 26 : 18} />
+      </button>
+      <output>{format(value)}</output>
+      <button type="button" aria-label={`${label ?? ''} plus`} disabled={value >= max} onClick={() => onChange(clamp(value + step))}>
+        <Icon name="plus" size={size === 'big' ? 26 : 18} />
+      </button>
+    </div>
+  );
+}
+
+export function Floating({
   anchor,
   onClose,
   align,
