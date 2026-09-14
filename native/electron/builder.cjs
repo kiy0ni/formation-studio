@@ -2,8 +2,8 @@
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId: 'com.kiy0ni.formationstudio',
-  productName: 'Formation Studio',
-  copyright: 'Formation Studio',
+  productName: 'Lineup',
+  copyright: 'Lineup',
   directories: {
     app: 'native/electron/app',
     output: 'native/electron/out',
@@ -22,10 +22,10 @@ module.exports = {
     hardenedRuntime: false,
     gatekeeperAssess: false,
     notarize: false,
-    artifactName: 'Formation-Studio-mac-${arch}.${ext}',
+    artifactName: 'Lineup-mac-${arch}.${ext}',
   },
   dmg: {
-    title: 'Formation Studio',
+    title: 'Lineup',
     writeUpdateInfo: false,
   },
   win: {
@@ -33,7 +33,7 @@ module.exports = {
     target: [{ target: 'nsis', arch: ['x64'] }],
     // no Windows code-signing certificate; icon and version info are set in after-pack.cjs (no Wine needed)
     signAndEditExecutable: false,
-    artifactName: 'Formation-Studio-windows.${ext}',
+    artifactName: 'Lineup-windows.${ext}',
   },
   nsis: {
     oneClick: false,
@@ -41,7 +41,7 @@ module.exports = {
     allowToChangeInstallationDirectory: true,
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
-    shortcutName: 'Formation Studio',
+    shortcutName: 'Lineup',
     installerLanguages: ['fr_FR'],
     language: '1036',
     unicode: true,

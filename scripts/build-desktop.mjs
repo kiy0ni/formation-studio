@@ -12,7 +12,7 @@ const run = (cmd, env = {}) => execSync(cmd, { cwd: root, stdio: 'inherit', env:
 const targets = process.argv.slice(2).filter((a) => a === '--mac' || a === '--win');
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 
-console.log(`\n▶ Formation Studio ${pkg.version} — application web`);
+console.log(`\n▶ Lineup ${pkg.version} — application web`);
 run('npx tsc --noEmit');
 run('npx vite build', { VITE_COLLAB: 'off' });
 
@@ -24,7 +24,7 @@ rmSync(join(app, 'web/sw.js'), { force: true });
 writeFileSync(
   join(app, 'package.json'),
   JSON.stringify(
-    { name: 'formation-studio', productName: 'Formation Studio', version: pkg.version, description: 'Chorégraphies K-pop synchronisées avec la musique', author: 'Formation Studio', main: 'main.js' },
+    { name: 'formation-studio', productName: 'Lineup', version: pkg.version, description: 'Chorégraphies K-pop synchronisées avec la musique', author: 'Lineup', main: 'main.js' },
     null,
     2,
   ) + '\n',
@@ -44,9 +44,9 @@ const out = join(root, 'native/electron/out');
 const release = join(root, 'native/release');
 mkdirSync(release, { recursive: true });
 const names = {
-  'Formation-Studio-mac-arm64.dmg': 'Formation-Studio-mac-apple-silicon.dmg',
-  'Formation-Studio-mac-x64.dmg': 'Formation-Studio-mac-intel.dmg',
-  'Formation-Studio-windows.exe': 'Formation-Studio-windows.exe',
+  'Lineup-mac-arm64.dmg': 'Lineup-mac-apple-silicon.dmg',
+  'Lineup-mac-x64.dmg': 'Lineup-mac-intel.dmg',
+  'Lineup-windows.exe': 'Lineup-windows.exe',
 };
 for (const [from, to] of Object.entries(names)) {
   if (existsSync(join(out, from))) {

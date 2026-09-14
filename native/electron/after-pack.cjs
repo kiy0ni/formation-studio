@@ -34,12 +34,12 @@ exports.default = async function afterPack(context) {
     versionInfo.setFileVersion(major, minor, patch, 0, lang.lang);
     versionInfo.setProductVersion(major, minor, patch, 0, lang.lang);
     versionInfo.setStringValues(lang, {
-      FileDescription: 'Formation Studio',
-      ProductName: 'Formation Studio',
-      CompanyName: 'Formation Studio',
-      LegalCopyright: 'Formation Studio',
+      FileDescription: 'Lineup',
+      ProductName: 'Lineup',
+      CompanyName: 'Lineup',
+      LegalCopyright: 'Lineup',
       OriginalFilename: `${info.productFilename}.exe`,
-      InternalName: 'Formation Studio',
+      InternalName: 'Lineup',
     });
     versionInfo.outputToResourceEntries(res.entries);
   }

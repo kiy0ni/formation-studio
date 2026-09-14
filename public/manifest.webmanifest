@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Formation Studio",
-  "short_name": "Formations",
+  "name": "Lineup",
+  "short_name": "Lineup",
   "description": "Créez des formations de danse K-pop synchronisées avec la musique.",
   "lang": "fr",
   "start_url": "./",

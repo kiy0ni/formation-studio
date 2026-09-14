@@ -149,9 +149,9 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
       }}
     >
       <header className="lib-top">
-        <button className="lib-brand" onClick={() => navigate('/')} aria-label="Formation Studio">
+        <button className="lib-brand" onClick={() => navigate('/')} aria-label="Lineup">
           <img src="icon.svg" alt="" width={30} height={30} />
-          <span>Formation Studio</span>
+          <span>Lineup</span>
         </button>
         <h1 className="lib-title">{title}</h1>
         <label className={`lib-search ${searchOpen ? 'open' : ''}`}>

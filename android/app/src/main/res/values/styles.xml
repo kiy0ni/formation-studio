@@ -13,7 +13,7 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
-        <!-- Formation Studio is a dark app: no white flash or white system bars -->
+        <!-- Lineup is a dark app: no white flash or white system bars -->
         <item name="android:windowBackground">@color/fsBackground</item>
         <item name="android:statusBarColor">@color/fsBackground</item>
         <item name="android:navigationBarColor">@color/fsBackground</item>

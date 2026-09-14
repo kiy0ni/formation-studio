@@ -1,4 +1,4 @@
-// Formation Studio — static server + real-time collaboration (WebSocket, LWW per key).
+// Lineup — static server + real-time collaboration (WebSocket, LWW per key).
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync, createReadStream } from 'node:fs';
@@ -149,7 +149,7 @@ async function api(req, res, url) {
 async function serveStatic(req, res, url) {
   if (!existsSync(DIST)) {
     res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
-    return res.end('Formation Studio API. Lancez "npm run build" pour servir l\'application, ou "npm run dev" pour le mode développement.');
+    return res.end('Lineup API. Lancez "npm run build" pour servir l\'application, ou "npm run dev" pour le mode développement.');
   }
   let path = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '');
   let file = join(DIST, path);
@@ -267,5 +267,5 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 server.listen(PORT, HOST, () => {
-  console.log(`Formation Studio server → http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
+  console.log(`Lineup server → http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
 });

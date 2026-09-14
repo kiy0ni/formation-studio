@@ -18,10 +18,10 @@ const REPO = 'kiy0ni/formation-studio';
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`;
 const asset = (name: string) => `https://github.com/${REPO}/releases/latest/download/${name}`;
 export const DOWNLOADS = {
-  macArm: asset('Formation-Studio-mac-apple-silicon.dmg'),
-  macIntel: asset('Formation-Studio-mac-intel.dmg'),
-  windows: asset('Formation-Studio-windows.exe'),
-  android: asset('Formation-Studio-android.apk'),
+  macArm: asset('Lineup-mac-apple-silicon.dmg'),
+  macIntel: asset('Lineup-mac-intel.dmg'),
+  windows: asset('Lineup-windows.exe'),
+  android: asset('Lineup-android.apk'),
 };
 
 /** Opens an app screen, in a separate window where the platform has windows. */

@@ -1,4 +1,4 @@
-// Builds the Android app into native/release/Formation-Studio-android.apk
+// Builds the Android app into native/release/Lineup-android.apk
 //   npm run build:android
 // Needs the Android SDK (ANDROID_HOME) and the signing key described in README (never committed).
 import { execSync } from 'node:child_process';
@@ -22,7 +22,7 @@ if (!existsSync(signing)) {
   process.exit(1);
 }
 
-console.log(`\n▶ Formation Studio ${pkg.version} — application web`);
+console.log(`\n▶ Lineup ${pkg.version} — application web`);
 run('npx tsc --noEmit');
 run('npx vite build');
 
@@ -38,5 +38,5 @@ run(`./gradlew assembleRelease --console=plain -PfsVersionName=${pkg.version} -P
 
 const apk = join(root, 'android/app/build/outputs/apk/release/app-release.apk');
 mkdirSync(join(root, 'native/release'), { recursive: true });
-copyFileSync(apk, join(root, 'native/release/Formation-Studio-android.apk'));
-console.log('  ✓ native/release/Formation-Studio-android.apk');
+copyFileSync(apk, join(root, 'native/release/Lineup-android.apk'));
+console.log('  ✓ native/release/Lineup-android.apk');

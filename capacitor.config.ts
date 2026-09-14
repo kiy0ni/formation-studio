@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.kiy0ni.formationstudio',
-  appName: 'Formation Studio',
+  appName: 'Lineup',
   webDir: 'dist',
   backgroundColor: '#0c0c10',
   plugins: {

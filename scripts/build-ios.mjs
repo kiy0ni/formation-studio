@@ -13,7 +13,7 @@ const env = { ...process.env, VITE_COLLAB: 'off' };
 const run = (cmd, cwd = root) => execSync(cmd, { cwd, stdio: 'inherit', env });
 const check = process.argv.includes('--check');
 
-console.log(`\n▶ Formation Studio ${pkg.version} — application web`);
+console.log(`\n▶ Lineup ${pkg.version} — application web`);
 run('npx tsc --noEmit');
 run('npx vite build');
 

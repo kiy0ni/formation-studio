@@ -1,4 +1,4 @@
-# Formation Studio
+# Lineup
 
 Application web pour créer des **formations de danse K-pop synchronisées avec la musique** : placement des membres, transitions animées, trajectoires, vue 3D, collaboration en temps réel et travail hors ligne.
 
@@ -8,10 +8,10 @@ Les dernières versions sont sur **https://github.com/kiy0ni/formation-studio/re
 
 | Appareil | Fichier |
 | --- | --- |
-| Mac avec puce Apple (M1…M4) | `Formation-Studio-mac-apple-silicon.dmg` |
-| Mac Intel | `Formation-Studio-mac-intel.dmg` |
-| Windows 10 / 11 | `Formation-Studio-windows.exe` |
-| Android | `Formation-Studio-android.apk` |
+| Mac avec puce Apple (M1…M4) | `Lineup-mac-apple-silicon.dmg` |
+| Mac Intel | `Lineup-mac-intel.dmg` |
+| Windows 10 / 11 | `Lineup-windows.exe` |
+| Android | `Lineup-android.apk` |
 | iPhone / iPad | le site, ajouté à l'écran d'accueil depuis Safari |
 
 Les apps sont distribuées hors des stores, sans certificat payant : un avertissement apparaît au premier lancement (Mac : Réglages Système → Confidentialité et sécurité → « Ouvrir quand même » ; Windows : « Informations complémentaires » → « Exécuter quand même » ; Android : autoriser l'installation depuis la source). Les apps signalent d'elles-mêmes quand une nouvelle version est publiée.

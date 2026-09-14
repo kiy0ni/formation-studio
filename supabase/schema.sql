@@ -1,4 +1,4 @@
--- Accounts and sync for Formation Studio (applied by `npm run setup:cloud`, safe to re-run).
+-- Accounts and sync for Lineup (applied by `npm run setup:cloud`, safe to re-run).
 -- Every choreography, team and folder is one row; each user only ever sees their own rows.
 
 create table if not exists public.items (

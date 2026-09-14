@@ -190,7 +190,7 @@ export function createRenderer(doc: Choreo, W: number, H: number, o: RenderOptio
     g.textAlign = 'right';
     g.fillStyle = 'rgba(239,234,247,0.28)';
     g.font = `600 ${u * 1.7}px ${FONT}`;
-    g.fillText('Formation Studio', W - pad, H - u * 1.3);
+    g.fillText('Lineup', W - pad, H - u * 1.3);
   }
 
   function drawArrow(g: Ctx, a: { x: number; y: number }, z: { x: number; y: number }, size: number) {

@@ -53,7 +53,7 @@ public class PrintPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     @objc func print(_ call: CAPPluginCall) {
-        let name = call.getString("name") ?? "Formation Studio"
+        let name = call.getString("name") ?? "Lineup"
         DispatchQueue.main.async {
             guard let webView = self.bridge?.webView else {
                 call.reject("Web view unavailable")

@@ -15,7 +15,7 @@ public class PrintPlugin extends Plugin {
 
     @PluginMethod
     public void print(PluginCall call) {
-        String name = call.getString("name", "Formation Studio");
+        String name = call.getString("name", "Lineup");
         getActivity().runOnUiThread(() -> {
             PrintManager printManager = (PrintManager) getActivity().getSystemService(Context.PRINT_SERVICE);
             PrintDocumentAdapter adapter = getBridge().getWebView().createPrintDocumentAdapter(name);

@@ -1,8 +1,8 @@
 {
   "name": "formation-studio",
-  "productName": "Formation Studio",
-  "version": "1.3.0",
+  "productName": "Lineup",
+  "version": "1.4.0",
   "description": "Chorégraphies K-pop synchronisées avec la musique",
-  "author": "Formation Studio",
+  "author": "Lineup",
   "main": "main.js"
 }

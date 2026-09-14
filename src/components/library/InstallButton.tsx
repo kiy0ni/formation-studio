@@ -7,7 +7,7 @@ import { Modal } from '../common/ui';
 const STEPS: Record<Platform, { title: string; steps: string[] }> = {
   'mac-safari': {
     title: 'Sur Mac avec Safari',
-    steps: ['Ouvrez le menu « Fichier » en haut de l’écran.', 'Choisissez « Ajouter au Dock… » puis « Ajouter ».', 'Formation Studio apparaît dans le Dock et le Launchpad, comme une app normale.'],
+    steps: ['Ouvrez le menu « Fichier » en haut de l’écran.', 'Choisissez « Ajouter au Dock… » puis « Ajouter ».', 'Lineup apparaît dans le Dock et le Launchpad, comme une app normale.'],
   },
   'mac-chrome': {
     title: 'Sur Mac avec Chrome ou Edge',
@@ -15,7 +15,7 @@ const STEPS: Record<Platform, { title: string; steps: string[] }> = {
   },
   android: {
     title: 'Sur Android avec Chrome',
-    steps: ['Touchez le menu ⋮ en haut à droite.', 'Choisissez « Installer l’application » (ou « Ajouter à l’écran d’accueil »).', 'L’icône Formation Studio apparaît avec vos autres apps.'],
+    steps: ['Touchez le menu ⋮ en haut à droite.', 'Choisissez « Installer l’application » (ou « Ajouter à l’écran d’accueil »).', 'L’icône Lineup apparaît avec vos autres apps.'],
   },
   ios: {
     title: 'Sur iPhone / iPad avec Safari',
@@ -50,11 +50,11 @@ export function InstallButton() {
 
   return (
     <>
-      <button className="btn install-btn" onClick={() => setHelp(true)} title="Installer Formation Studio sur cet appareil">
+      <button className="btn install-btn" onClick={() => setHelp(true)} title="Installer Lineup sur cet appareil">
         <Icon name="download" /> <span className="hide-sm">Installer l’app</span>
       </button>
       {help && (
-        <Modal title="Installer Formation Studio" onClose={() => setHelp(false)} width={620}>
+        <Modal title="Installer Lineup" onClose={() => setHelp(false)} width={620}>
           <div className="install-section">
             <b>Application à télécharger</b>
             <p className="hint">Une vraie app qui s’ouvre dans sa propre fenêtre et fonctionne sans internet.</p>

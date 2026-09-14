@@ -1,4 +1,4 @@
-// Formation Studio — desktop app (Mac / Windows). Serves the built web app from inside the package.
+// Lineup — desktop app (Mac / Windows). Serves the built web app from inside the package.
 const { app, BrowserWindow, Menu, net, protocol, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -11,6 +11,9 @@ const ORIGIN = 'app://formation';
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, codeCache: true } },
 ]);
+
+// the library stays in the original data folder, whatever the app is called
+app.setPath('userData', path.join(app.getPath('appData'), 'Formation Studio'));
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
@@ -33,7 +36,7 @@ function createWindow(route = '') {
     minWidth: 380,
     minHeight: 560,
     show: false,
-    title: 'Formation Studio',
+    title: 'Lineup',
     backgroundColor: '#0c0c10',
     autoHideMenuBar: true,
     webPreferences: {
@@ -86,15 +89,15 @@ function buildMenu() {
   // no Undo/Redo/Select all roles: those shortcuts belong to the app (undo a move, select all dancers)
   return Menu.buildFromTemplate([
     {
-      label: 'Formation Studio',
+      label: 'Lineup',
       submenu: [
-        { role: 'about', label: 'À propos de Formation Studio' },
+        { role: 'about', label: 'À propos de Lineup' },
         { type: 'separator' },
-        { role: 'hide', label: 'Masquer Formation Studio' },
+        { role: 'hide', label: 'Masquer Lineup' },
         { role: 'hideOthers', label: 'Masquer les autres' },
         { role: 'unhide', label: 'Tout afficher' },
         { type: 'separator' },
-        { role: 'quit', label: 'Quitter Formation Studio' },
+        { role: 'quit', label: 'Quitter Lineup' },
       ],
     },
     {
@@ -129,7 +132,7 @@ app.whenReady().then(() => {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(WEB, 'index.html');
     return net.fetch(pathToFileURL(file).toString());
   });
-  app.setAboutPanelOptions({ applicationName: 'Formation Studio', applicationVersion: app.getVersion(), copyright: 'Chorégraphies K-pop' });
+  app.setAboutPanelOptions({ applicationName: 'Lineup', applicationVersion: app.getVersion(), copyright: 'Chorégraphies K-pop' });
   Menu.setApplicationMenu(buildMenu());
   mainWindow = createWindow();
   app.on('activate', () => {
