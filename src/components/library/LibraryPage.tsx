@@ -270,8 +270,8 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
                   <div className="card-body">
                     <div className="card-title">
                       <h3>{c.name}</h3>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Menu trigger={<button className="icon-btn tiny" aria-label="Actions"><Icon name="dots" size={16} /></button>}>
+                      <div className="card-menu" onClick={(e) => e.stopPropagation()}>
+                        <Menu trigger={<button className="icon-btn card-menu-btn" aria-label={`Actions pour ${c.name}`} title="Actions"><Icon name="dots" size={20} /></button>}>
                           {(close) => (
                             <>
                               <MenuItem icon="text" onClick={() => (close(), setRenaming(c))}>Renommer</MenuItem>
