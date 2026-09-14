@@ -5021,3 +5021,41 @@ body:has(.editor):not(:has(.modal-backdrop)) .toast {
 .install-steps .btn {
   margin-top: 6px;
 }
+
+/* project card "⋯" button: big enough to see and to hit (it used to be a 22 px ghost) */
+.card-title .card-menu-btn {
+  width: 36px;
+  height: 36px;
+  margin: -6px -6px -6px 0;
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.card-title .card-menu-btn:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+/* phone: over the top-right corner of the preview, so the title keeps its width */
+@media (pointer: coarse) {
+  .card:has(> .card-body .card-menu) {
+    position: relative;
+  }
+  .card-title .card-menu {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+  }
+  .card-title .card-menu-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    background: rgba(12, 12, 16, 0.72);
+    border-color: rgba(255, 255, 255, 0.14);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+}
