@@ -32,6 +32,17 @@ body,
   height: 100%;
 }
 
+/* app-like on phones: no double-tap zoom, no text inflation, no rubber-band / pull-to-refresh */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+html,
+body {
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   -webkit-tap-highlight-color: transparent;
@@ -1108,7 +1119,10 @@ kbd {
 /* --------------------------------- editor -------------------------------- */
 
 .editor {
-  height: 100%;
+  /* pinned to the screen: the browser toolbar showing/hiding never shifts the editor */
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
@@ -3100,6 +3114,23 @@ kbd {
 }
 .lib-tabs {
   scrollbar-width: none;
+}
+/* no text-selection magnifier or callout when long-pressing the editor UI */
+.editor .topbar,
+.editor .stage-wrap,
+.editor .formation-list,
+.editor .timeline,
+.editor .mobile-nav,
+.editor .inspector-tabs,
+.editor .sheet-head {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.editor input,
+.editor textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* guide */
