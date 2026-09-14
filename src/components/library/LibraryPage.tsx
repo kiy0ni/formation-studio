@@ -2,6 +2,7 @@ import { produce } from 'immer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { exportBackup, importBackup, isBackup } from '../../lib/backup';
 import { isMediaFile, MEDIA_ACCEPT } from '../../lib/media';
+import { CAN_OPEN_WINDOWS, openRoute } from '../../lib/platform';
 import { FOLDER_COLORS } from '../../lib/colors';
 import { COLLAB_ENABLED } from '../../lib/config';
 import { db } from '../../lib/db';
@@ -299,9 +300,13 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
                                   Dupliquer
                                   <small>Pour tester une variante</small>
                                 </MenuItem>
-                                <MenuItem icon="window" onClick={() => (close(), window.open(`#/c/${c.id}`, '_blank'))}>Ouvrir dans une nouvelle fenêtre</MenuItem>
+                                {CAN_OPEN_WINDOWS && (
+                                  <MenuItem icon="window" onClick={() => (close(), openRoute(`/c/${c.id}`, true))}>
+                                    Ouvrir dans une nouvelle fenêtre
+                                  </MenuItem>
+                                )}
                                 <MenuItem icon="download" onClick={() => (close(), exportJson(c))}>Exporter (.json)</MenuItem>
-                                <MenuItem icon="print" onClick={() => (close(), window.open(`#/print/${c.id}`, '_blank'))}>Imprimer / PDF</MenuItem>
+                                <MenuItem icon="print" onClick={() => (close(), openRoute(`/print/${c.id}`, true))}>Imprimer / PDF</MenuItem>
                                 <div className="menu-sep">Ranger dans</div>
                                 <MenuItem icon="note" onClick={() => (close(), save({ ...c, folderId: null }))}>Sans dossier</MenuItem>
                                 {folders.map((fo) => (

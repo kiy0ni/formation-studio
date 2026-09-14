@@ -4,6 +4,7 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const API = process.env.API_URL || 'http://localhost:8787';
+const VERSION = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version as string;
 
 /** Stamps the service worker with a build id and the list of files to precache for offline use. */
 function serviceWorker(): Plugin {
@@ -24,6 +25,7 @@ function serviceWorker(): Plugin {
 export default defineConfig({
   // relative base so the build works at any path (GitHub Pages serves under /<repo>/)
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(VERSION) },
   plugins: [react(), serviceWorker()],
   server: {
     port: 5173,

@@ -2,3 +2,16 @@ node_modules
 dist
 server/data
 .DS_Store
+
+# native builds
+native/electron/out
+native/electron/app/web
+native/electron/icon-sizes
+native/release
+android/app/build
+android/build
+android/.gradle
+android/local.properties
+android/app/release
+*.jks
+*.keystore

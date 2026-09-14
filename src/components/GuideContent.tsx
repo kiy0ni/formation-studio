@@ -189,6 +189,7 @@ const SECTIONS: GuideSection[] = [
       <ul>
         <li><b>Tout est enregistré automatiquement</b>, à chaque modification, sur l’appareil. L’indicateur « ✓ Enregistré » en haut le confirme. Pas besoin de bouton « sauvegarder ».</li>
         <li>L’app marche <b>sans internet</b> une fois installée.</li>
+        <li>Les apps Mac, Windows et Android (bouton <B>Installer l’app</B> du site) ont chacune leur bibliothèque, comme le site : la sauvegarde sert à passer de l’une à l’autre.</li>
         <li>Les données restent sur l’appareil : elles ne sont pas envoyées en ligne. Pour en garder une copie ou changer d’appareil : bibliothèque → <B>Données</B> → <B>Sauvegarder toute la bibliothèque</B> (un seul fichier, musiques comprises).</li>
         <li>Sur le nouvel appareil (ex. Mac → Android) : <B>Données</B> → <B>Importer</B> et choisissez ce fichier. Les chorégraphies les plus récentes sont gardées.</li>
         <li>Conseil : faites une sauvegarde de temps en temps, et évitez de vider les données du navigateur.</li>
@@ -218,7 +219,10 @@ const SECTIONS: GuideSection[] = [
     intro: 'La même app, adaptée au tactile.',
     body: (
       <ul>
-        <li>Installez-la : Android (Chrome) menu ⋮ → <B>Installer l’application</B> ; iPhone (Safari) Partager → <B>Sur l’écran d’accueil</B>.</li>
+        <li>
+          <b>Android</b> : téléchargez l’app (fichier .apk) depuis le bouton <B>Installer l’app</B> du site. <b>iPhone</b> : dans Safari, Partager → <B>Sur l’écran d’accueil</B>.
+        </li>
+        <li>Dans l’app Android, le bouton retour du téléphone ferme d’abord ce qui est ouvert, puis revient en arrière. Les exports (vidéo, sauvegarde, PDF) s’enregistrent ou se partagent via le menu de partage d’Android.</li>
         <li>La barre du bas ouvre les panneaux <B>Placer</B>, <B>Formation</B>, <B>Membres</B>, <B>Musique</B>, <B>Scène</B> par-dessus la scène. Touchez à côté ou ✕ pour fermer.</li>
         <li>Les formations défilent en bandeau sous la scène. Pincez la scène pour zoomer.</li>
         <li>Membres sélectionnés : le bouton rose « Ajuster » ouvre directement les outils.</li>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { download, safe } from '../../lib/exporters';
+import { IS_ANDROID_APP } from '../../lib/platform';
 import { formatTime, sortedDancers, totalDuration } from '../../lib/model';
 import type { VideoProgress, VideoResult } from '../../lib/videoExport';
 import { createRenderer, videoSize, type Aspect, type VideoOptions } from '../../lib/videoRender';
@@ -246,7 +247,7 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
                 notify('Vidéo téléchargée');
               }}
             >
-              <Icon name="download" /> Télécharger
+              <Icon name="download" /> {IS_ANDROID_APP ? 'Enregistrer / partager' : 'Télécharger'}
             </button>
             <ShareButton blob={phase.result.blob} name={fileName(phase.result.ext)} title={doc.name} />
             <button className="btn ghost" onClick={() => setPhase({ kind: 'setup' })}>

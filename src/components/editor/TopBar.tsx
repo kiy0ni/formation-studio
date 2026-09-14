@@ -4,6 +4,7 @@ import { db } from '../../lib/db';
 import { exportJson, exportSvgAsPng } from '../../lib/exporters';
 import { initials } from '../../lib/geometry';
 import { formatTime, itemIndexAt, timeline } from '../../lib/model';
+import { CAN_OPEN_WINDOWS, openRoute } from '../../lib/platform';
 import { navigate } from '../../lib/router';
 import type { Choreo } from '../../lib/types';
 import { useCollisions } from '../../store/derived';
@@ -58,7 +59,7 @@ export function TopBar() {
         Vidéo avec la musique
         <small>MP4 pour écran, Instagram, Reels, TikTok</small>
       </MenuItem>
-      <MenuItem icon="print" onClick={() => (close(), window.open(`#/print/${useEditor.getState().doc!.id}`, '_blank'))}>
+      <MenuItem icon="print" onClick={() => (close(), openRoute(`/print/${useEditor.getState().doc!.id}`, true))}>
         PDF / impression
         <small>Toutes les formations + une fiche par danseuse</small>
       </MenuItem>
@@ -264,8 +265,8 @@ function ProjectList({ close }: { close: () => void }) {
               </small>
             </span>
           </button>
-          {c.id !== currentId && (
-            <IconButton icon="window" title="Ouvrir dans une nouvelle fenêtre" onClick={() => (close(), window.open(`#/c/${c.id}`, '_blank'))} />
+          {c.id !== currentId && CAN_OPEN_WINDOWS && (
+            <IconButton icon="window" title="Ouvrir dans une nouvelle fenêtre" onClick={() => (close(), openRoute(`/c/${c.id}`, true))} />
           )}
         </div>
       ))}

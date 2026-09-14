@@ -2,6 +2,30 @@
 
 Application web pour créer des **formations de danse K-pop synchronisées avec la musique** : placement des membres, transitions animées, trajectoires, vue 3D, collaboration en temps réel et travail hors ligne.
 
+## Applications à télécharger (Mac, Windows, Android)
+
+Les dernières versions sont sur **https://github.com/kiy0ni/formation-studio/releases/latest** (aussi accessibles depuis le bouton « Installer l'app » du site) :
+
+| Appareil | Fichier |
+| --- | --- |
+| Mac avec puce Apple (M1…M4) | `Formation-Studio-mac-apple-silicon.dmg` |
+| Mac Intel | `Formation-Studio-mac-intel.dmg` |
+| Windows 10 / 11 | `Formation-Studio-windows.exe` |
+| Android | `Formation-Studio-android.apk` |
+| iPhone / iPad | le site, ajouté à l'écran d'accueil depuis Safari |
+
+Les apps sont distribuées hors des stores, sans certificat payant : un avertissement apparaît au premier lancement (Mac : Réglages Système → Confidentialité et sécurité → « Ouvrir quand même » ; Windows : « Informations complémentaires » → « Exécuter quand même » ; Android : autoriser l'installation depuis la source). Les apps signalent d'elles-mêmes quand une nouvelle version est publiée.
+
+### Construire et publier une nouvelle version
+
+1. Augmenter `version` dans `package.json` (ex. `1.2.0`).
+2. `npm run build:desktop` → Mac (Apple Silicon + Intel) et Windows dans `native/release/` (Electron, `native/electron/`).
+3. `npm run build:android` → APK signé dans `native/release/` (Capacitor, dossier `android/`). Nécessite le SDK Android (`brew install --cask android-commandlinetools`) et Java 21.
+4. `npm run release` → publie les fichiers dans une release GitHub `v<version>`.
+5. `npm run deploy` → met à jour le site.
+
+**Clé de signature Android** : `~/.formation-studio/android-release.jks` et `android-signing.properties` (hors du dépôt). Sauvegardez ce dossier en lieu sûr : sans cette clé, les téléphones refuseront d'installer une mise à jour par-dessus l'app existante.
+
 ## Installer l'app (Mac, Android, iPhone)
 
 Ouvrez **https://kiy0ni.github.io/formation-studio/** puis :

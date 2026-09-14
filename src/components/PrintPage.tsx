@@ -5,7 +5,16 @@ import { initials, samplePath, textOn } from '../lib/geometry';
 import { formatTime, sortedDancers, sortedFormations, sortedProps, timeline, totalDuration } from '../lib/model';
 import { navigate } from '../lib/router';
 import type { Choreo, Formation, ID } from '../lib/types';
+import { IS_ANDROID_APP } from '../lib/platform';
 import { Icon } from './common/Icon';
+
+/** Browsers and the desktop app use the print dialog; the Android app calls the system print service. */
+async function printPage(name: string) {
+  if (!IS_ANDROID_APP) return window.print();
+  const { registerPlugin } = await import('@capacitor/core');
+  const printer = registerPlugin<{ print: (options: { name: string }) => Promise<void> }>('FsPrint');
+  await printer.print({ name });
+}
 
 export function PrintPage({ id }: { id: string }) {
   const [doc, setDoc] = useState<Choreo | null | undefined>(undefined);
@@ -36,7 +45,7 @@ export function PrintPage({ id }: { id: string }) {
           <input type="checkbox" checked={sheets} onChange={(e) => setSheets(e.target.checked)} /> Fiches danseurs
         </label>
         <span className="grow" />
-        <button className="btn primary" onClick={() => window.print()}>
+        <button className="btn primary" onClick={() => printPage(doc.name)}>
           <Icon name="print" /> Imprimer / Enregistrer en PDF
         </button>
       </div>

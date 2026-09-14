@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Formation Studio</string>
+    <string name="title_activity_main">Formation Studio</string>
+    <string name="package_name">com.kiy0ni.formationstudio</string>
+    <string name="custom_url_scheme">com.kiy0ni.formationstudio</string>
+</resources>
