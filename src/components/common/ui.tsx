@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { DANCER_COLORS } from '../../lib/colors';
 import { Icon, type IconName } from './Icon';
 
@@ -256,20 +257,86 @@ export function ColorSwatches({ value, onChange, colors = DANCER_COLORS }: { val
   );
 }
 
+/**
+ * Menu / popover layer rendered on top of the whole page (never clipped by cards, panels or the
+ * phone bottom sheet). Opens below or above its anchor depending on the room, and stays on screen.
+ */
+function Floating({
+  anchor,
+  onClose,
+  align,
+  direction,
+  className,
+  children,
+}: {
+  anchor: RefObject<HTMLElement | null>;
+  onClose: () => void;
+  align: 'left' | 'right';
+  direction: 'down' | 'up';
+  className: string;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState<CSSProperties>({ top: 0, left: 0, visibility: 'hidden' });
+
+  useLayoutEffect(() => {
+    const place = () => {
+      const a = anchor.current?.getBoundingClientRect();
+      const el = ref.current;
+      if (!a || !el) return;
+      const vw = document.documentElement.clientWidth;
+      const vh = window.innerHeight;
+      const margin = 8;
+      const gap = 6;
+      const width = Math.min(el.offsetWidth, vw - margin * 2);
+      const natural = el.scrollHeight;
+      const below = vh - a.bottom - gap - margin;
+      const above = a.top - gap - margin;
+      const up = direction === 'up' ? above >= Math.min(natural, 220) || above > below : natural > below && above > below;
+      const maxHeight = Math.max(140, up ? above : below);
+      const left = Math.max(margin, Math.min(vw - margin - width, align === 'right' ? a.right - width : a.left));
+      setStyle(up ? { left, top: 'auto', bottom: vh - a.top + gap, maxHeight } : { left, top: a.bottom + gap, bottom: 'auto', maxHeight });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [anchor, align, direction]);
+
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !anchor.current?.contains(t)) onClose();
+    };
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('pointerdown', down);
+    window.addEventListener('keydown', key);
+    return () => {
+      window.removeEventListener('pointerdown', down);
+      window.removeEventListener('keydown', key);
+    };
+  }, [anchor, onClose]);
+
+  return createPortal(
+    <div ref={ref} className={`${className} floating`} style={style}>
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 export function ColorDot({ color, onChange, size = 22 }: { color: string; onChange: (c: string) => void; size?: number }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    window.addEventListener('pointerdown', close);
-    return () => window.removeEventListener('pointerdown', close);
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
   return (
     <div className="color-dot-wrap" ref={ref}>
       <button type="button" className="color-dot" style={{ background: color, width: size, height: size }} onClick={() => setOpen(!open)} aria-label="Couleur" />
       {open && (
-        <div className="popover">
+        <Floating anchor={ref} onClose={close} align="left" direction="down" className="popover">
           <ColorSwatches
             value={color}
             onChange={(c) => {
@@ -277,7 +344,7 @@ export function ColorDot({ color, onChange, size = 22 }: { color: string; onChan
               setOpen(false);
             }}
           />
-        </div>
+        </Floating>
       )}
     </div>
   );
@@ -321,16 +388,15 @@ export function Menu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    window.addEventListener('pointerdown', close);
-    return () => window.removeEventListener('pointerdown', close);
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
   return (
     <div className="menu-wrap" ref={ref}>
       <span onClick={() => setOpen(!open)}>{trigger}</span>
-      {open && <div className={`menu ${align} ${direction}`}>{children(() => setOpen(false))}</div>}
+      {open && (
+        <Floating anchor={ref} onClose={close} align={align} direction={direction} className="menu">
+          {children(close)}
+        </Floating>
+      )}
     </div>
   );
 }

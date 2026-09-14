@@ -34,6 +34,7 @@ body,
 
 body {
   margin: 0;
+  -webkit-tap-highlight-color: transparent;
   background: var(--bg);
   color: var(--text);
   font: 13px/1.45 var(--font);
@@ -2774,9 +2775,18 @@ kbd {
 .menu {
   max-width: min(380px, calc(100vw - 16px));
 }
-.menu.up {
-  top: auto;
-  bottom: calc(100% + 6px);
+/* menus & popovers live on top of the page (see Floating in ui.tsx) */
+.menu.floating,
+.popover.floating {
+  position: fixed;
+  right: auto;
+  z-index: 160;
+  overflow: auto;
+  overscroll-behavior: contain;
+  animation: fade 0.12s ease;
+}
+.popover.floating {
+  max-width: calc(100vw - 16px);
 }
 .menu-item b {
   font-weight: 600;
