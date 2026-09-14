@@ -73,7 +73,7 @@ async function newEditor(ctxOpts, tag, dancers) {
   });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`[${tag}] PAGEERROR ${e.message}`));
-  page.on('console', (m) => m.type() === 'error' && !/Failed to load resource|XNNPACK/.test(m.text()) && errors.push(`[${tag}] ${m.text().slice(0, 200)}`));
+  page.on('console', (m) => m.type() === 'error' && !/Failed to load resource|XNNPACK|odml.pa.googleapis.com/.test(m.text()) && errors.push(`[${tag}] ${m.text().slice(0, 200)}`));
   await page.goto(BASE);
   await page.waitForSelector('.lib-top');
   const touch = !!ctxOpts.hasTouch;

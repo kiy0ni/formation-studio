@@ -90,6 +90,7 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 - Notifications en haut de l'écran (jamais sur la timeline ni sur les boutons des fenêtres).
 - Relecture → **Vérifier** : chaque personne à six moments de la vidéo ; les personnes que l'app distingue mal sont marquées « À vérifier ».
 - Analyse interrompue (onglet fermé, téléphone éteint) : reprise là où elle en était. Résultats : `a:<hash>` (analyse), `m:<hash>` (résumé), `r:<hash>:<choré>` (relecture et positions appliquées, par chorégraphie) dans IndexedDB `fs-detect`, effacés avec la vidéo.
+- Le moteur MediaPipe tente d'envoyer des statistiques d'usage à Google (`odml.pa.googleapis.com`) : la politique de sécurité de contenu du site le bloque, rien ne sort de l'appareil (le message dans la console du navigateur est normal).
 - Moteur : MediaPipe Object Detector (EfficientDet-Lite0, `public/detect/person-detector.tflite`, 7 Mo) + WebAssembly (~11 Mo), téléchargés seulement à la première utilisation (exclus du pré-cache hors ligne). Résultats gardés par vidéo dans IndexedDB `fs-detect`.
 - Code isolé dans `src/detect/` ; points d'accroche : `<DetectSection />` dans `src/video/RefVideoPanel.tsx`, `<DetectGhosts />` dans `src/components/editor/Stage2D.tsx`, filtre `vision_wasm` dans `vite.config.ts`.
 - **Retirer la fonctionnalité** :

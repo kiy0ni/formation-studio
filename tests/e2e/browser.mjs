@@ -33,7 +33,7 @@ export const expect = (cond, msg) => {
 /** Fails the run on page errors and console errors. */
 export function watch(page, tag, errors) {
   page.on('pageerror', (e) => errors.push(`[${tag}] PAGEERROR ${e.message}`));
-  page.on('console', (m) => m.type() === 'error' && !/Failed to load resource|XNNPACK/.test(m.text()) && errors.push(`[${tag}] ${m.text().slice(0, 200)}`));
+  page.on('console', (m) => m.type() === 'error' && !/Failed to load resource|XNNPACK|odml.pa.googleapis.com/.test(m.text()) && errors.push(`[${tag}] ${m.text().slice(0, 200)}`));
 }
 
 /** Opens the app in a new context with the tour and hints off. */
