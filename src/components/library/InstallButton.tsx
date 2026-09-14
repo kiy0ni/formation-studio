@@ -1,5 +1,7 @@
 import { useEffect, useReducer, useState } from 'react';
-import { canPromptInstall, detectPlatform, isStandalone, onInstallChange, promptInstall, type Platform } from '../../lib/install';
+import { canPromptInstall, detectPlatform, isStandalone, macInstallCommand, onInstallChange, promptInstall, type Platform } from '../../lib/install';
+import { SITE_URL } from './ShareAppDialog';
+import { notify } from '../common/Toast';
 import { DOWNLOADS, IS_NATIVE_APP, openExternal } from '../../lib/platform';
 import { Icon } from '../common/Icon';
 import { Modal } from '../common/ui';
@@ -25,18 +27,36 @@ const STEPS: Record<Platform, { title: string; steps: string[] }> = {
     title: 'Firefox ne sait pas installer les apps',
     steps: ['Ouvrez ce lien dans Safari, Chrome ou Edge.'],
   },
+  'in-app': {
+    title: 'Vous êtes dans le navigateur d’une autre app',
+    steps: ['Ce navigateur (WhatsApp, Instagram, Messenger…) ne sait pas installer.', 'Touchez ⋯ ou Partager → « Ouvrir dans Safari » (ou Chrome), ou copiez le lien ci-dessous et collez-le dans votre navigateur.'],
+  },
+  arc: {
+    title: 'Arc ne sait pas installer les apps',
+    steps: ['Ouvrez ce lien dans Safari (Fichier → « Ajouter au Dock ») ou dans Chrome.', 'Ou téléchargez l’app Mac ci-dessous.'],
+  },
   other: {
     title: 'Chrome ou Edge',
     steps: ['Cliquez l’icône « Installer » à droite de la barre d’adresse.', 'Ou menu ⋮ → « Installer Lineup ».'],
   },
 };
 
-const APPS: { id: string; icon: 'stage' | 'window' | 'hand'; title: string; url: string; first: string }[] = [
-  { id: 'mac-arm', icon: 'stage', title: 'Mac (puce Apple)', url: DOWNLOADS.macArm, first: 'Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».' },
-  { id: 'mac-intel', icon: 'stage', title: 'Mac (Intel)', url: DOWNLOADS.macIntel, first: 'Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».' },
-  { id: 'windows', icon: 'window', title: 'Windows', url: DOWNLOADS.windows, first: '« Informations complémentaires » → « Exécuter quand même ».' },
-  { id: 'android', icon: 'hand', title: 'Android (.apk)', url: DOWNLOADS.android, first: 'Autorisez l’installation depuis cette source.' },
+const MAC_FIRST = 'macOS bloque l’app la première fois : ouvrez-la, cliquez « Terminé », puis Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».';
+const APPS: { id: string; icon: 'stage' | 'window' | 'hand'; title: string; url: string; first: string; mac?: 'arm' | 'intel' }[] = [
+  { id: 'mac-arm', icon: 'stage', title: 'Mac (puce Apple)', url: DOWNLOADS.macArm, first: MAC_FIRST, mac: 'arm' },
+  { id: 'mac-intel', icon: 'stage', title: 'Mac (Intel)', url: DOWNLOADS.macIntel, first: MAC_FIRST, mac: 'intel' },
+  { id: 'windows', icon: 'window', title: 'Windows', url: DOWNLOADS.windows, first: 'Windows affiche « Windows a protégé votre ordinateur » : « Informations complémentaires » → « Exécuter quand même ».' },
+  { id: 'android', icon: 'hand', title: 'Android (.apk)', url: DOWNLOADS.android, first: 'Ouvrez le fichier téléchargé et autorisez l’installation depuis cette source.' },
 ];
+
+async function copy(text: string, done: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    notify(done);
+  } catch {
+    notify('Copie impossible');
+  }
+}
 
 export function InstallButton() {
   const [, rerender] = useReducer((x: number) => x + 1, 0);
@@ -44,7 +64,8 @@ export function InstallButton() {
   useEffect(() => onInstallChange(rerender), []);
 
   if (IS_NATIVE_APP || isStandalone()) return null;
-  const info = STEPS[detectPlatform()];
+  const platform = detectPlatform();
+  const info = STEPS[platform];
 
   return (
     <>
@@ -67,6 +88,11 @@ export function InstallButton() {
                     <li key={s}>{s}</li>
                   ))}
                 </ol>
+                {platform === 'in-app' && (
+                  <button className="btn small" onClick={() => copy(SITE_URL, 'Lien copié · collez-le dans Safari ou Chrome')}>
+                    <Icon name="copy" size={14} /> Copier le lien
+                  </button>
+                )}
               </div>
             )}
             <p className="hint">Même compte sur chaque appareil = mêmes chorégraphies partout.</p>
@@ -74,16 +100,24 @@ export function InstallButton() {
               <summary>Autres options : apps à télécharger</summary>
               <div className="download-grid">
                 {APPS.map((a) => (
-                  <button key={a.id} className="download-card" onClick={() => openExternal(a.url)} title={a.first}>
-                    <Icon name={a.icon} size={20} />
-                    <span>
-                      <b>{a.title}</b>
-                      <small>Premier lancement : {a.first}</small>
-                    </span>
-                    <Icon name="download" size={16} />
-                  </button>
+                  <div key={a.id} className="download-item">
+                    <button className="download-card" onClick={() => openExternal(a.url)}>
+                      <Icon name={a.icon} size={20} />
+                      <span>
+                        <b>{a.title}</b>
+                        <small>{a.first}</small>
+                      </span>
+                      <Icon name="download" size={16} />
+                    </button>
+                    {a.mac && (
+                      <button className="btn small ghost" onClick={() => copy(macInstallCommand(a.mac === 'intel'), 'Commande copiée · collez-la dans le Terminal')}>
+                        <Icon name="copy" size={14} /> Sans alerte : copier la commande Terminal
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
+              <p className="hint">Les apps ne sont pas signées par Apple ni Microsoft (payant) : l’alerte au premier lancement est normale, l’app est la même que le site.</p>
             </details>
           </div>
         </Modal>

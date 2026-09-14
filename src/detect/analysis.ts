@@ -31,7 +31,7 @@ export interface Swap {
 export interface ReviewSettings {
   people: number;
   swaps: Swap[];
-  placement: { flip: boolean; spread: number; depth: number; fill: boolean };
+  placement: { flip: boolean; spread: number; depth: number; fill: boolean; center?: boolean };
   sensitivity: number;
   mapping: (ID | null)[];
   mode: 'all' | 'positions' | 'timings';
@@ -73,8 +73,8 @@ export interface Applied {
   ghosts: Ghosts;
 }
 
-/** 5: looks on the dancers only (room subtracted), 7 body parts, 0..255. Older analyses are run again. */
-const VERSION = 5;
+/** 6: image times carried explicitly (downstream code never assumes even spacing). Older analyses are run again. */
+const VERSION = 6;
 /** Images analysed per second of video: quick, or precise (crossings followed more closely). */
 export const PRECISION = { fast: 3, precise: 5 } as const;
 export type Precision = keyof typeof PRECISION;
