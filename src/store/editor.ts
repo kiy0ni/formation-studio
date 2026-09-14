@@ -10,7 +10,7 @@ interface HistoryEntry {
   after: Patch;
 }
 
-export type InspectorTab = 'formation' | 'dancers' | 'presets' | 'stage' | 'props' | 'music';
+export type InspectorTab = 'formation' | 'dancers' | 'presets' | 'stage' | 'music';
 
 export interface EditorState {
   doc: Choreo | null;
@@ -35,6 +35,8 @@ export interface EditorState {
   showNames: boolean;
   focusDancer: ID | null;
   tab: InspectorTab;
+  /** Phone layout: the settings panel is a bottom sheet. */
+  sheetOpen: boolean;
   pxPerSec: number;
   toast: { text: string; id: number } | null;
 
@@ -86,6 +88,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   showNames: true,
   focusDancer: null,
   tab: 'presets',
+  sheetOpen: false,
   pxPerSec: 60,
   toast: null,
 

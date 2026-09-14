@@ -4,7 +4,7 @@ import { currentItem, useEditor } from '../../store/editor';
 import { useMusic } from '../../store/music';
 import { playback } from '../../store/playback';
 import { Icon } from '../common/Icon';
-import { IconButton } from '../common/ui';
+import { IconButton, Menu, MenuCheck, Segmented } from '../common/ui';
 import { addFormationAtPlayhead, goToFormation } from './EditorPage';
 
 const PAD = 12;
@@ -265,38 +265,54 @@ function PlayerBar() {
       </div>
 
       <div className="player-right">
-        <button className={`btn small ghost music-btn ${missing ? 'warn' : ''}`} onClick={() => set({ tab: 'music' })} title="Musique">
+        <button className={`btn small ghost music-btn ${missing ? 'warn' : ''}`} onClick={() => set({ tab: 'music', sheetOpen: true })} title="Musique et tempo">
           <Icon name="music" size={14} />
           <span className="ellipsis hide-sm">{loading ? 'Chargement…' : missing ? 'Audio manquant' : (music.name ?? 'Ajouter une musique')}</span>
           {music.bpm ? <em>{music.bpm} BPM</em> : null}
         </button>
         {!readOnly && (
-          <button className="btn small" onClick={addFormationAtPlayhead} title="Nouvelle formation au curseur (F)">
-            <Icon name="plus" size={14} /> <span className="hide-sm">Formation</span>
+          <button className="btn small primary player-add" onClick={addFormationAtPlayhead} title="Nouvelle formation à partir du curseur (F)">
+            <Icon name="plus" size={14} /> <span>Formation</span>
           </button>
         )}
-        <IconButton
-          icon="loop"
-          title="Boucler la formation courante (L)"
-          active={!!loop}
-          onClick={() => {
-            const s = useEditor.getState();
-            if (s.loop) return set({ loop: null });
-            const { item } = currentItem(s.doc!, s.time);
-            if (item) set({ loop: { a: item.start, b: Math.max(item.end, item.start + 0.5) } });
-          }}
-        />
-        {music.bpm ? <IconButton icon="metronome" title="Métronome (K)" active={metronome} onClick={() => set({ metronome: !metronome })} /> : null}
-        <select className="rate-select" value={rate} onChange={(e) => playback.setRate(Number(e.target.value))} title="Vitesse de lecture">
-          {[0.25, 0.5, 0.75, 1, 1.25, 1.5].map((r) => (
-            <option key={r} value={r}>
-              {r}×
-            </option>
-          ))}
-        </select>
-        <span className="divider hide-sm" />
-        <IconButton icon="minus" title="Dézoomer la timeline" className="hide-sm" onClick={() => set({ pxPerSec: Math.max(8, pps / 1.4) })} />
-        <IconButton icon="plus" title="Zoomer la timeline" className="hide-sm" onClick={() => set({ pxPerSec: Math.min(500, pps * 1.4) })} />
+        <Menu direction="up" trigger={<IconButton icon="settings" title="Options de lecture : vitesse, boucle, métronome" active={!!loop || metronome || rate !== 1} />}>
+          {() => (
+            <div className="menu-panel">
+              <div className="menu-sep">Vitesse de lecture</div>
+              <div className="menu-row">
+                <Segmented
+                  value={String(rate)}
+                  onChange={(v) => playback.setRate(Number(v))}
+                  options={['0.25', '0.5', '0.75', '1', '1.25'].map((v) => ({ value: v, label: `${v.replace('.', ',')}×` }))}
+                />
+              </div>
+              <MenuCheck
+                icon="loop"
+                label="Boucler la formation"
+                hint="Répète la formation en cours et sa transition (L)"
+                checked={!!loop}
+                onChange={() => {
+                  const s = useEditor.getState();
+                  if (s.loop) return set({ loop: null });
+                  const { item } = currentItem(s.doc!, s.time);
+                  if (item) set({ loop: { a: item.start, b: Math.max(item.end, item.start + 0.5) } });
+                }}
+              />
+              {music.bpm ? (
+                <MenuCheck icon="metronome" label="Métronome" hint="Un clic sur chaque temps (K)" checked={metronome} onChange={(v) => set({ metronome: v })} />
+              ) : null}
+              <div className="menu-sep">Zoom de la timeline</div>
+              <div className="menu-row">
+                <button className="btn small" onClick={() => set({ pxPerSec: Math.max(8, pps / 1.4) })}>
+                  <Icon name="minus" size={14} /> Dézoomer
+                </button>
+                <button className="btn small" onClick={() => set({ pxPerSec: Math.min(500, pps * 1.4) })}>
+                  <Icon name="plus" size={14} /> Zoomer
+                </button>
+              </div>
+            </div>
+          )}
+        </Menu>
       </div>
     </div>
   );

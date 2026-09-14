@@ -3,25 +3,31 @@ import { CollabSession, downloadAudio } from '../../collab/client';
 import { db } from '../../lib/db';
 import { insertFormationAfter, itemIndexAt, timeline } from '../../lib/model';
 import { navigate } from '../../lib/router';
-import type { Choreo, CollabLink } from '../../lib/types';
-import { currentItem, useEditor } from '../../store/editor';
+import type { CollabLink } from '../../lib/types';
+import { currentItem, onLocalChange, useEditor, type InspectorTab } from '../../store/editor';
 import { loadMusic } from '../../store/music';
 import { playback } from '../../store/playback';
+import { useSaveStatus } from '../../store/save';
 import { Icon } from '../common/Icon';
 import { FormationList } from './FormationList';
-import { Inspector } from './Inspector';
+import { Inspector, TABS } from './Inspector';
 import { Stage2D } from './Stage2D';
 import { Timeline } from './Timeline';
 import { TopBar } from './TopBar';
+import { shouldShowTour, Tour } from './Tour';
 
 const Stage3D = lazy(() => import('./Stage3D'));
+
+export const startTour = () => window.dispatchEvent(new Event('fs-tour'));
 
 export function EditorPage({ id }: { id: string }) {
   const [status, setStatus] = useState<'loading' | 'missing' | 'ready'>('loading');
   const view = useEditor((s) => s.view);
+  const sheetOpen = useEditor((s) => s.sheetOpen);
+  const tab = useEditor((s) => s.tab);
   const collabKey = useEditor((s) => (s.doc?.collab ? `${s.doc.collab.roomId}|${s.doc.collab.key}` : ''));
   const musicHash = useEditor((s) => s.doc?.music.hash);
-  const [mobilePanel, setMobilePanel] = useState<'stage' | 'formations' | 'inspector'>('stage');
+  const [tour, setTour] = useState(false);
 
   // load
   useEffect(() => {
@@ -30,42 +36,70 @@ export function EditorPage({ id }: { id: string }) {
       if (!alive) return;
       if (!doc) return setStatus('missing');
       useEditor.getState().load(doc, doc.collab?.role === 'view');
+      useEditor.setState({ sheetOpen: false });
       setStatus('ready');
     });
     return () => {
       alive = false;
       playback.pause();
       const doc = useEditor.getState().doc;
-      if (doc) db.saveChoreo(doc);
+      if (doc && doc.id === id) db.saveChoreo(doc);
       useEditor.getState().unload();
     };
   }, [id]);
 
-  // autosave (debounced)
+  // autosave: debounced, and flushed as soon as the app goes to the background (phones kill apps silently)
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const flush = () => {
+    const flush = async () => {
       timer = null;
       const doc = useEditor.getState().doc;
-      if (doc && doc.id === id) db.saveChoreo(doc as Choreo);
-    };
-    const unsub = useEditor.subscribe((s, prev) => {
-      if (s.doc && s.doc !== prev.doc && prev.doc) {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(flush, 400);
+      if (!doc || doc.id !== id) return;
+      try {
+        await db.saveChoreo(doc);
+        useSaveStatus.setState({ state: 'saved', at: Date.now() });
+      } catch {
+        useSaveStatus.setState({ state: 'error', at: Date.now() });
       }
-    });
-    const onUnload = () => timer && flush();
-    window.addEventListener('beforeunload', onUnload);
-    return () => {
-      unsub();
-      window.removeEventListener('beforeunload', onUnload);
+    };
+    const flushNow = () => {
       if (timer) {
         clearTimeout(timer);
         flush();
       }
     };
+    useSaveStatus.setState({ state: 'saved', at: Date.now() });
+    const unsub = useEditor.subscribe((s, prev) => {
+      if (s.doc && prev.doc && s.doc !== prev.doc) {
+        useSaveStatus.setState({ state: 'saving', at: Date.now() });
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(flush, 400);
+      }
+    });
+    const onVisibility = () => document.visibilityState === 'hidden' && flushNow();
+    window.addEventListener('beforeunload', flushNow);
+    window.addEventListener('pagehide', flushNow);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      unsub();
+      window.removeEventListener('beforeunload', flushNow);
+      window.removeEventListener('pagehide', flushNow);
+      document.removeEventListener('visibilitychange', onVisibility);
+      flushNow();
+    };
   }, [id]);
+
+  // same choreography open in several windows: keep them in sync
+  useEffect(() => {
+    if (status !== 'ready' || typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel(`fs-choreo-${id}`);
+    const unsub = onLocalChange((after) => channel.postMessage(after));
+    channel.onmessage = (e) => useEditor.getState().applyRemote(e.data);
+    return () => {
+      unsub();
+      channel.close();
+    };
+  }, [status, id]);
 
   // music
   useEffect(() => {
@@ -82,6 +116,18 @@ export function EditorPage({ id }: { id: string }) {
     session.start();
     return () => session.stop();
   }, [status, collabKey, id]);
+
+  // guided tour: first visit, or on demand from the Help menu
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const show = () => setTour(true);
+    window.addEventListener('fs-tour', show);
+    const t = shouldShowTour() ? setTimeout(show, 500) : null;
+    return () => {
+      window.removeEventListener('fs-tour', show);
+      if (t) clearTimeout(t);
+    };
+  }, [status]);
 
   useShortcuts();
 
@@ -104,8 +150,10 @@ export function EditorPage({ id }: { id: string }) {
       </div>
     );
 
+  const openTab = (t: InspectorTab) => useEditor.setState(sheetOpen && tab === t ? { sheetOpen: false } : { tab: t, sheetOpen: true });
+
   return (
-    <div className={`editor mobile-${mobilePanel}`}>
+    <div className={`editor ${sheetOpen ? 'sheet-open' : ''}`}>
       <TopBar />
       <div className="editor-main">
         <FormationList />
@@ -117,21 +165,71 @@ export function EditorPage({ id }: { id: string }) {
               <Stage3D />
             </Suspense>
           )}
+          <CoachTip />
         </div>
         <Inspector />
       </div>
-      <nav className="mobile-tabs">
-        <button className={mobilePanel === 'formations' ? 'on' : ''} onClick={() => setMobilePanel('formations')}>
-          <Icon name="grid" /> Formations
-        </button>
-        <button className={mobilePanel === 'stage' ? 'on' : ''} onClick={() => setMobilePanel('stage')}>
-          <Icon name="stage" /> Scène
-        </button>
-        <button className={mobilePanel === 'inspector' ? 'on' : ''} onClick={() => setMobilePanel('inspector')}>
-          <Icon name="settings" /> Réglages
-        </button>
-      </nav>
       <Timeline />
+      <nav className="mobile-nav" aria-label="Réglages">
+        {TABS.map((t) => (
+          <button key={t.id} className={sheetOpen && tab === t.id ? 'on' : ''} onClick={() => openTab(t.id)}>
+            <Icon name={t.icon} size={19} />
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </nav>
+      {sheetOpen && <div className="sheet-backdrop" onClick={() => useEditor.setState({ sheetOpen: false })} />}
+      {tour && <Tour onClose={() => setTour(false)} />}
+    </div>
+  );
+}
+
+/** Contextual "what to do next" card for the first steps. */
+function CoachTip() {
+  const count = useEditor((s) => Object.keys(s.doc!.formations).length);
+  const hasMusic = useEditor((s) => !!s.doc!.music.hash);
+  const readOnly = useEditor((s) => s.readOnly);
+  const playing = useEditor((s) => s.playing);
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem('fs-coach-off') === '1';
+    } catch {
+      return false;
+    }
+  });
+  if (hidden || readOnly || playing || count > 2) return null;
+  const tip = !hasMusic
+    ? { title: 'Ajoutez la musique', body: 'Importez la chanson pour caler les formations sur les temps et voir les comptes « 5, 6, 7, 8 ».', label: 'Importer la musique', tab: 'music' as InspectorTab }
+    : count === 1
+      ? { title: 'Placez la première formation', body: 'Choisissez une forme toute prête, ou glissez les membres sur la scène.', label: 'Choisir une forme', tab: 'presets' as InspectorTab }
+      : { title: 'Enchaînez les formations', body: 'Lancez la musique, mettez pause au bon moment puis « + Formation ». Le déplacement est animé tout seul.', label: null, tab: null };
+  return (
+    <div className="coach-tip">
+      <Icon name="sparkles" size={18} />
+      <div>
+        <b>{tip.title}</b>
+        <p>{tip.body}</p>
+        {tip.label && tip.tab && (
+          <button className="btn small primary" onClick={() => useEditor.setState({ tab: tip.tab!, sheetOpen: true })}>
+            {tip.label}
+          </button>
+        )}
+      </div>
+      <button
+        className="icon-btn tiny"
+        aria-label="Masquer les astuces"
+        title="Ne plus afficher les astuces"
+        onClick={() => {
+          try {
+            localStorage.setItem('fs-coach-off', '1');
+          } catch {
+            /* ignore */
+          }
+          setHidden(true);
+        }}
+      >
+        <Icon name="close" size={12} />
+      </button>
     </div>
   );
 }
@@ -157,6 +255,7 @@ export function goToFormation(delta: number) {
 export function addFormationAtPlayhead() {
   const s = useEditor.getState();
   if (!s.doc || s.readOnly) return;
+  playback.pause();
   const time = s.time;
   let newId = '';
   s.update('Nouvelle formation', (d) => {
@@ -176,6 +275,7 @@ export function addFormationAtPlayhead() {
   if (!newId) return;
   const it = timeline(useEditor.getState().doc!).find((x) => x.f.id === newId);
   if (it) playback.seek(it.start);
+  s.notify('Formation ajoutée : placez les membres');
 }
 
 function useShortcuts() {
@@ -216,7 +316,7 @@ function useShortcuts() {
           playback.toggle();
           return;
         case 'Escape':
-          s.set({ selected: [], selectedProp: null, focusDancer: null });
+          s.set({ selected: [], selectedProp: null, focusDancer: null, sheetOpen: false });
           return;
         case '[':
           goToFormation(-1);
@@ -253,8 +353,8 @@ function useShortcuts() {
           const dy = (e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0) * flip;
           s.update('Décaler', (d) => {
             const f = d.formations[item.f.id];
-            for (const id of s.selected) {
-              const p = f.positions[id];
+            for (const sid of s.selected) {
+              const p = f.positions[sid];
               if (!p) continue;
               p.x = Math.round((p.x + dx) * 100) / 100;
               p.y = Math.round((p.y + dy) * 100) / 100;

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { produce } from 'immer';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { exportBackup, importBackup, isBackup } from '../../lib/backup';
 import { FOLDER_COLORS } from '../../lib/colors';
 import { COLLAB_ENABLED } from '../../lib/config';
@@ -10,6 +10,7 @@ import { formatTime, sortedFormations, totalDuration } from '../../lib/model';
 import { navigate } from '../../lib/router';
 import type { Choreo, Folder } from '../../lib/types';
 import { useLibrary } from '../../store/library';
+import { GuideContent } from '../GuideContent';
 import { FormationThumb } from '../common/FormationThumb';
 import { Icon } from '../common/Icon';
 import { notify } from '../common/Toast';
@@ -20,22 +21,39 @@ import { NewChoreoDialog } from './NewChoreoDialog';
 import { ProfileButton } from './ProfileButton';
 import { TeamsView } from './TeamsView';
 
-type Tab = 'choreos' | 'teams' | 'discover';
+type Tab = 'choreos' | 'teams' | 'discover' | 'guide';
 
 const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+const isAudio = (f: File) => f.type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(f.name);
 
-export function LibraryPage({ tab }: { tab: Tab }) {
+export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
   const { choreos, teams, folders, loaded, refresh } = useLibrary();
   const [query, setQuery] = useState('');
   const [folder, setFolder] = useState<string | 'all' | 'none' | 'shared'>('all');
-  const [creating, setCreating] = useState<{ teamId?: string } | null>(null);
+  const [creating, setCreating] = useState<{ teamId?: string; file?: File } | null>(null);
   const [renaming, setRenaming] = useState<Choreo | null>(null);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
 
   useEffect(() => {
     refresh();
+    // choreographies edited in another window show up when coming back
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!create) return;
+    setCreating({});
+    history.replaceState(null, '', '#/');
+  }, [create]);
 
   const q = norm(query.trim());
   const filtered = useMemo(() => {
@@ -88,17 +106,43 @@ export function LibraryPage({ tab }: { tab: Tab }) {
       await save(doc);
       notify(`« ${doc.name} » importée`);
     } catch (e) {
-      alert((e as Error).message);
+      alert((e as Error).message || 'Fichier non reconnu');
     }
+  };
+
+  const onFiles = (files: FileList | null) => {
+    const f = files?.[0];
+    if (!f) return;
+    if (isAudio(f)) setCreating({ file: f });
+    else if (f.name.endsWith('.json') || f.type === 'application/json') onImport(f);
+    else alert('Glissez une musique (MP3, WAV…) pour créer une chorégraphie, ou un fichier .json pour l’importer.');
   };
 
   const folderCount = (id: string) => choreos.filter((c) => c.folderId === id).length;
 
   return (
-    <div className="library">
+    <div
+      className="library"
+      onDragEnter={(e) => {
+        if (!e.dataTransfer.types.includes('Files')) return;
+        dragDepth.current++;
+        setDragging(true);
+      }}
+      onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
+      onDragLeave={() => {
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (!dragDepth.current) setDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        dragDepth.current = 0;
+        setDragging(false);
+        onFiles(e.dataTransfer.files);
+      }}
+    >
       <header className="lib-header">
         <div className="brand" onClick={() => navigate('/')}>
-          <img src="icon.svg" alt="" width={30} height={30} />
+          <img src="icon.svg" alt="" width={32} height={32} />
           <div>
             <strong>Formation Studio</strong>
             <span>Chorégraphies K-pop</span>
@@ -125,19 +169,14 @@ export function LibraryPage({ tab }: { tab: Tab }) {
           >
             {(close) => (
               <>
-                <MenuItem icon="upload" onClick={() => (close(), fileRef.current?.click())}>
-                  Importer une chorégraphie ou une sauvegarde
-                </MenuItem>
-                <MenuItem
-                  icon="download"
-                  onClick={async () => {
-                    close();
-                    const r = await exportBackup();
-                    notify(`Sauvegarde créée : ${r.choreos} chorégraphie(s), musiques comprises`);
-                  }}
-                >
+                <div className="menu-sep">Vos données restent sur cet appareil</div>
+                <MenuItem icon="download" onClick={async () => (close(), notify(`Sauvegarde créée : ${(await exportBackup()).choreos} chorégraphie(s), musiques comprises`))}>
                   Sauvegarder toute la bibliothèque
-                  <small>Pour garder une copie ou transférer vers un autre appareil</small>
+                  <small>Une copie de sécurité, ou pour changer d’appareil</small>
+                </MenuItem>
+                <MenuItem icon="upload" onClick={() => (close(), fileRef.current?.click())}>
+                  Importer
+                  <small>Une sauvegarde ou une chorégraphie (.json)</small>
                 </MenuItem>
               </>
             )}
@@ -167,19 +206,33 @@ export function LibraryPage({ tab }: { tab: Tab }) {
           <Icon name="users" /> Équipes <em>{teams.length}</em>
         </button>
         <button className={tab === 'discover' ? 'on' : ''} onClick={() => navigate('/discover')}>
-          <Icon name="sparkles" /> Découvrir
+          <Icon name="sparkles" /> Modèles
+        </button>
+        <button className={tab === 'guide' ? 'on' : ''} onClick={() => navigate('/guide')}>
+          <Icon name="help" /> Guide
         </button>
       </nav>
 
       {tab === 'teams' && <TeamsView query={q} onCreateChoreo={(teamId) => setCreating({ teamId })} />}
       {tab === 'discover' && <DiscoverView query={q} />}
+      {tab === 'guide' && (
+        <div className="lib-main padded narrow">
+          <GuideContent />
+        </div>
+      )}
 
-      {tab === 'choreos' && (
+      {tab === 'choreos' && loaded && !choreos.length && (
+        <div className="lib-main padded">
+          <Welcome onCreate={() => setCreating({})} onImportMusic={(f) => setCreating({ file: f })} />
+        </div>
+      )}
+
+      {tab === 'choreos' && choreos.length > 0 && (
         <div className="lib-body">
           <aside className="folders">
             <FolderRow icon="grid" label="Toutes" count={choreos.length} on={folder === 'all'} onClick={() => setFolder('all')} />
             <FolderRow icon="note" label="Sans dossier" count={choreos.filter((c) => !c.folderId).length} on={folder === 'none'} onClick={() => setFolder('none')} />
-            <FolderRow icon="cloud" label="Partagées" count={choreos.filter((c) => c.collab).length} on={folder === 'shared'} onClick={() => setFolder('shared')} />
+            {choreos.some((c) => c.collab) && <FolderRow icon="cloud" label="Partagées" count={choreos.filter((c) => c.collab).length} on={folder === 'shared'} onClick={() => setFolder('shared')} />}
             <div className="folders-head">
               <span>Dossiers</span>
               <button className="icon-btn" title="Nouveau dossier" onClick={() => setEditingFolder({ id: '', name: '', color: FOLDER_COLORS[folders.length % FOLDER_COLORS.length] })}>
@@ -187,18 +240,9 @@ export function LibraryPage({ tab }: { tab: Tab }) {
               </button>
             </div>
             {folders.map((f) => (
-              <FolderRow
-                key={f.id}
-                icon="folder"
-                color={f.color}
-                label={f.name}
-                count={folderCount(f.id)}
-                on={folder === f.id}
-                onClick={() => setFolder(f.id)}
-                onEdit={() => setEditingFolder(f)}
-              />
+              <FolderRow key={f.id} icon="folder" color={f.color} label={f.name} count={folderCount(f.id)} on={folder === f.id} onClick={() => setFolder(f.id)} onEdit={() => setEditingFolder(f)} />
             ))}
-            {!folders.length && <p className="hint">Rangez vos chorégraphies par comeback, cover ou compétition.</p>}
+            {!folders.length && <p className="hint">Rangez vos chorégraphies par comeback, cover ou compétition avec le bouton +.</p>}
           </aside>
 
           <main className="lib-main">
@@ -217,31 +261,18 @@ export function LibraryPage({ tab }: { tab: Tab }) {
               </div>
             )}
 
-            {loaded && !choreos.length && (
-              <div className="empty">
-                <div className="empty-art">
-                  <span style={{ background: '#ff4d8d' }} />
-                  <span style={{ background: '#7c5cff' }} />
-                  <span style={{ background: '#2ec5ff' }} />
-                  <span style={{ background: '#34d399' }} />
-                  <span style={{ background: '#ffb020' }} />
-                </div>
-                <h2>Votre première chorégraphie</h2>
-                <p>Ajoutez vos membres, importez la musique, puis enchaînez les formations en un clic.</p>
-                <div className="row gap">
-                  <button className="btn primary" onClick={() => setCreating({})}>
-                    <Icon name="plus" /> Créer une chorégraphie
-                  </button>
-                  <button className="btn" onClick={() => navigate('/discover')}>
-                    <Icon name="sparkles" /> Partir d’un modèle
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {loaded && choreos.length > 0 && !filtered.length && <p className="hint center">Aucun résultat.</p>}
+            {!filtered.length && <p className="hint center">Aucun résultat.</p>}
 
             <div className="cards">
+              {!q && (
+                <button className="card new-card" onClick={() => setCreating({})}>
+                  <span className="new-card-icon">
+                    <Icon name="plus" size={22} />
+                  </span>
+                  <b>Nouvelle chorégraphie</b>
+                  <span className="hint">Importez la musique pour commencer, ou glissez un MP3 n’importe où sur la page.</span>
+                </button>
+              )}
               {filtered.map((c) => {
                 const first = sortedFormations(c)[0];
                 const f = folders.find((x) => x.id === c.folderId);
@@ -263,10 +294,14 @@ export function LibraryPage({ tab }: { tab: Tab }) {
                             {(close) => (
                               <>
                                 <MenuItem icon="text" onClick={() => (close(), setRenaming(c))}>Renommer</MenuItem>
-                                <MenuItem icon="copy" onClick={() => (close(), duplicate(c))}>Dupliquer</MenuItem>
+                                <MenuItem icon="copy" onClick={() => (close(), duplicate(c))}>
+                                  Dupliquer
+                                  <small>Pour tester une variante</small>
+                                </MenuItem>
+                                <MenuItem icon="window" onClick={() => (close(), window.open(`#/c/${c.id}`, '_blank'))}>Ouvrir dans une nouvelle fenêtre</MenuItem>
                                 <MenuItem icon="download" onClick={() => (close(), exportJson(c))}>Exporter (.json)</MenuItem>
                                 <MenuItem icon="print" onClick={() => (close(), window.open(`#/print/${c.id}`, '_blank'))}>Imprimer / PDF</MenuItem>
-                                <div className="menu-sep">Déplacer vers</div>
+                                <div className="menu-sep">Ranger dans</div>
                                 <MenuItem icon="note" onClick={() => (close(), save({ ...c, folderId: null }))}>Sans dossier</MenuItem>
                                 {folders.map((fo) => (
                                   <MenuItem key={fo.id} icon="folder" onClick={() => (close(), save({ ...c, folderId: fo.id }))}>
@@ -281,7 +316,7 @@ export function LibraryPage({ tab }: { tab: Tab }) {
                         </div>
                       </div>
                       <p className="card-meta">
-                        {Object.keys(c.dancers).length} membres · {Object.keys(c.formations).length} formations · {formatTime(totalDuration(c), false)}
+                        {Object.keys(c.dancers).length} membres · {Object.keys(c.formations).length} formation{Object.keys(c.formations).length > 1 ? 's' : ''} · {formatTime(totalDuration(c), false)}
                       </p>
                       <p className="card-meta dim">
                         {f && (
@@ -289,13 +324,12 @@ export function LibraryPage({ tab }: { tab: Tab }) {
                             <Icon name="folder" size={11} /> {f.name}
                           </span>
                         )}
-                        {c.music.name ? (
+                        {c.music.name && (
                           <span>
                             <Icon name="music" size={11} /> {c.music.name}
                           </span>
-                        ) : (
-                          <span>Modifiée {new Date(c.updatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                         )}
+                        <span>Modifiée le {new Date(c.updatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                       </p>
                     </div>
                   </article>
@@ -306,11 +340,22 @@ export function LibraryPage({ tab }: { tab: Tab }) {
         </div>
       )}
 
+      {dragging && (
+        <div className="drop-overlay">
+          <div>
+            <Icon name="music" size={40} />
+            <b>Déposez la musique pour créer une chorégraphie</b>
+            <span>ou un fichier .json pour l’importer</span>
+          </div>
+        </div>
+      )}
+
       {creating && (
         <NewChoreoDialog
           teams={teams}
           folders={folders}
           initialTeamId={creating.teamId}
+          initialFile={creating.file}
           initialFolderId={folder !== 'all' && folder !== 'none' && folder !== 'shared' ? folder : null}
           onClose={() => setCreating(null)}
           onCreate={async (doc) => {
@@ -359,6 +404,54 @@ export function LibraryPage({ tab }: { tab: Tab }) {
   );
 }
 
+function Welcome({ onCreate, onImportMusic }: { onCreate: () => void; onImportMusic: (f: File) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const steps: { icon: 'music' | 'wand' | 'video'; title: string; body: string }[] = [
+    { icon: 'music', title: '1. La musique', body: 'Importez la chanson : le tempo est détecté pour compter les « 5, 6, 7, 8 ».' },
+    { icon: 'wand', title: '2. Les formations', body: 'Choisissez une forme en un clic, ajustez en glissant les membres, ajoutez la suivante au bon moment.' },
+    { icon: 'video', title: '3. Partagez', body: 'Relisez l’animation, puis exportez une vidéo avec la musique ou un PDF pour chaque danseuse.' },
+  ];
+  return (
+    <div className="welcome">
+      <div className="empty-art">
+        <span style={{ background: '#ff4d8d' }} />
+        <span style={{ background: '#7c5cff' }} />
+        <span style={{ background: '#2ec5ff' }} />
+        <span style={{ background: '#34d399' }} />
+        <span style={{ background: '#ffb020' }} />
+      </div>
+      <h1>Créez vos formations K-pop</h1>
+      <p className="welcome-lead">Placez le groupe sur scène, synchronisez avec la musique et partagez le résultat. Tout est enregistré automatiquement sur cet appareil.</p>
+      <div className="step-cards">
+        {steps.map((s) => (
+          <div key={s.title} className="step-card">
+            <span className="collapsible-icon">
+              <Icon name={s.icon} size={18} />
+            </span>
+            <b>{s.title}</b>
+            <p>{s.body}</p>
+          </div>
+        ))}
+      </div>
+      <div className="row gap wrap center-row">
+        <button className="btn primary big" onClick={() => fileRef.current?.click()}>
+          <Icon name="music" /> Commencer avec une musique
+        </button>
+        <button className="btn big" onClick={onCreate}>
+          <Icon name="plus" /> Sans musique
+        </button>
+        <button className="btn ghost big" onClick={() => navigate('/discover')}>
+          <Icon name="sparkles" /> Partir d’un modèle
+        </button>
+      </div>
+      <p className="hint">
+        Astuce : glissez un MP3 sur cette page · <button className="link-btn" onClick={() => navigate('/guide')}>Lire le guide</button>
+      </p>
+      <input ref={fileRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden onChange={(e) => e.target.files?.[0] && onImportMusic(e.target.files[0])} />
+    </div>
+  );
+}
+
 function FolderRow({
   icon,
   label,
@@ -399,7 +492,7 @@ function FolderRow({
   );
 }
 
-export function RenameDialog({ title, value, onClose, onSave }: { title: string; value: string; onClose: () => void; onSave: (v: string) => void }) {
+function RenameDialog({ title, value, onClose, onSave }: { title: string; value: string; onClose: () => void; onSave: (v: string) => void }) {
   const [name, setName] = useState(value);
   return (
     <Modal

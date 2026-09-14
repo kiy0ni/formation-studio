@@ -54,6 +54,8 @@ export function Stage2D() {
   const svgRef = useRef<SVGSVGElement>(null);
   const contentRef = useRef<SVGGElement>(null);
   const drag = useRef<Drag | null>(null);
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; zoom: number; mid: { x: number; y: number }; cam: { x: number; y: number }; scale: number } | null>(null);
   const [cam, setCam] = useState({ zoom: 1, x: 0, y: 0 });
   const [box, setBox] = useState<{ a: Vec; b: Vec } | null>(null);
 
@@ -144,7 +146,7 @@ export function Stage2D() {
     if (e.button !== 0) return;
     e.stopPropagation();
     if (playing) playback.pause();
-    useEditor.setState({ selectedProp: pid, selected: [], tab: 'props' });
+    useEditor.setState({ selectedProp: pid, selected: [], tab: 'stage' });
     if (readOnly) return;
     const fid = ensureHold();
     if (!fid) return;
@@ -200,6 +202,24 @@ export function Stage2D() {
 
   const onBgDown = (e: React.PointerEvent) => {
     const rect = svgRef.current!.getBoundingClientRect();
+    // two fingers on the stage: pinch to zoom, move to pan
+    if (e.pointerType === 'touch') {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.current.size === 2) {
+        const [p1, p2] = [...touches.current.values()];
+        pinch.current = {
+          dist: Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1,
+          zoom: cam.zoom,
+          mid: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
+          cam: { x: cam.x, y: cam.y },
+          scale: Math.max(vw / rect.width, vh / rect.height),
+        };
+        drag.current = null;
+        setBox(null);
+        capture(e);
+        return;
+      }
+    }
     if (e.button === 1 || e.altKey || (e.button === 0 && cam.zoom > 1 && e.shiftKey && e.metaKey)) {
       const scale = Math.max(vw / rect.width, vh / rect.height);
       drag.current = { kind: 'pan', sx: e.clientX, sy: e.clientY, ox: cam.x, oy: cam.y, scale };
@@ -217,6 +237,21 @@ export function Stage2D() {
   };
 
   const onMove = (e: React.PointerEvent) => {
+    if (pinch.current && touches.current.has(e.pointerId)) {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const pts = [...touches.current.values()];
+      if (pts.length >= 2) {
+        const pc = pinch.current;
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+        setCam({
+          zoom: Math.max(0.5, Math.min(5, (pc.zoom * dist) / pc.dist)),
+          x: pc.cam.x - (mid.x - pc.mid.x) * pc.scale,
+          y: pc.cam.y - (mid.y - pc.mid.y) * pc.scale,
+        });
+      }
+      return;
+    }
     const d = drag.current;
     if (!d) return;
     const st = useEditor.getState();
@@ -314,7 +349,9 @@ export function Stage2D() {
     }
   };
 
-  const onUp = () => {
+  const onUp = (e: React.PointerEvent) => {
+    touches.current.delete(e.pointerId);
+    if (touches.current.size < 2) pinch.current = null;
     const d = drag.current;
     drag.current = null;
     if (!d) return;
@@ -462,7 +499,7 @@ export function Stage2D() {
                 transform={`translate(${p.x} ${p.y})${audienceTop ? ' rotate(180)' : ''}`}
                 opacity={dim ? 0.22 : 1}
                 onPointerDown={(e) => onDancerDown(e, d.id)}
-                onDoubleClick={() => useEditor.setState({ tab: 'presets' })}
+                onDoubleClick={() => useEditor.setState({ tab: 'presets', sheetOpen: true })}
               >
                 {hit.has(d.id) && <circle r={r + 0.14} className="dancer-hit" />}
                 {sel && <circle r={r + 0.08} className="dancer-sel" />}
@@ -532,6 +569,14 @@ export function Stage2D() {
           <Icon name="plus" size={14} />
         </button>
       </div>
+
+      {selected.length > 0 && !playing && (
+        <div className="stage-overlay bottom-center only-sm">
+          <button className="sel-chip" onClick={() => useEditor.setState({ tab: 'presets', sheetOpen: true })}>
+            <Icon name="wand" size={15} /> {selected.length} sélectionné{selected.length > 1 ? 's' : ''} · Ajuster
+          </button>
+        </div>
+      )}
 
       {editable && (
         <div className="stage-overlay bottom-left hint-chip hide-sm">

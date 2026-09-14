@@ -36,6 +36,13 @@ npm run lan        # accessible depuis les téléphones du même réseau Wi-Fi
 
 ## Fonctionnalités
 
+**Prise en main**
+- Nouvelle chorégraphie en 2 étapes : musique d'abord (tempo détecté, premières durées calées sur les temps), puis groupe et scène. On peut aussi glisser un MP3 sur la bibliothèque.
+- Visite guidée au premier lancement, astuces contextuelles, guide complet intégré (onglet Guide et menu Aide).
+- Panneaux en sections repliables expliquées : l'essentiel visible, le reste à un clic.
+- Version téléphone : barre d'onglets en bas, panneau glissant par-dessus la scène, bandeau de formations, pincer pour zoomer.
+- Enregistrement automatique visible (« ✓ Enregistré »), sélecteur de chorégraphies dans l'éditeur, plusieurs fenêtres synchronisées.
+
 **Placement**
 - 26 formations prédéfinies : ligne, deux/trois lignes, quinconce, colonne, diagonale, zigzag, V, V inversé, pyramide, cercle, arc (bow), losange, X, grille, carré, double cercle, cœur, centre + ailes, groupe serré, sous-unités, escalier, flèche…
 - Application à tout le groupe ou à une sélection, avec espacement réglable et attribution « trajets courts » (algorithme hongrois) ou « ordre gauche → droite ».

@@ -269,7 +269,42 @@ export function ColorDot({ color, onChange, size = 22 }: { color: string; onChan
   );
 }
 
-export function Menu({ trigger, children, align = 'right' }: { trigger: ReactNode; children: (close: () => void) => ReactNode; align?: 'left' | 'right' }) {
+export function MenuCheck({
+  icon,
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  icon?: IconName;
+  label: ReactNode;
+  hint?: ReactNode;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button type="button" className={`menu-item check ${checked ? 'on' : ''}`} role="menuitemcheckbox" aria-checked={checked} onClick={() => onChange(!checked)}>
+      {icon && <Icon name={icon} size={15} />}
+      <span>
+        <b>{label}</b>
+        {hint && <small>{hint}</small>}
+      </span>
+      <i className={`check-box ${checked ? 'on' : ''}`}>{checked && <Icon name="check" size={12} />}</i>
+    </button>
+  );
+}
+
+export function Menu({
+  trigger,
+  children,
+  align = 'right',
+  direction = 'down',
+}: {
+  trigger: ReactNode;
+  children: (close: () => void) => ReactNode;
+  align?: 'left' | 'right';
+  direction?: 'down' | 'up';
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -281,7 +316,7 @@ export function Menu({ trigger, children, align = 'right' }: { trigger: ReactNod
   return (
     <div className="menu-wrap" ref={ref}>
       <span onClick={() => setOpen(!open)}>{trigger}</span>
-      {open && <div className={`menu ${align}`}>{children(() => setOpen(false))}</div>}
+      {open && <div className={`menu ${align} ${direction}`}>{children(() => setOpen(false))}</div>}
     </div>
   );
 }

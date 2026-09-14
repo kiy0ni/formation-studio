@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 export type Route =
-  | { name: 'library'; tab: 'choreos' | 'teams' | 'discover' }
+  | { name: 'library'; tab: 'choreos' | 'teams' | 'discover' | 'guide'; create?: boolean }
   | { name: 'editor'; id: string }
   | { name: 'join'; room: string; key: string }
   | { name: 'print'; id: string };
@@ -22,6 +22,10 @@ export function parseRoute(hash: string): Route {
       return { name: 'library', tab: 'teams' };
     case 'discover':
       return { name: 'library', tab: 'discover' };
+    case 'guide':
+      return { name: 'library', tab: 'guide' };
+    case 'new':
+      return { name: 'library', tab: 'choreos', create: true };
   }
   return { name: 'library', tab: 'choreos' };
 }

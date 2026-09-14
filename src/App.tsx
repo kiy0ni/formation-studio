@@ -11,7 +11,7 @@ export default function App() {
   const route = useMemo(() => parseRoute(hash), [hash]);
   return (
     <>
-      {route.name === 'library' && <LibraryPage tab={route.tab} />}
+      {route.name === 'library' && <LibraryPage tab={route.tab} create={route.create} />}
       {route.name === 'editor' && <EditorPage key={route.id} id={route.id} />}
       {route.name === 'join' && <JoinPage room={route.room} accessKey={route.key} />}
       {route.name === 'print' && <PrintPage id={route.id} />}
