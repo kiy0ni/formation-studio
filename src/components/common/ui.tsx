@@ -16,15 +16,49 @@ export function Modal({
   footer?: ReactNode;
   width?: number;
 }) {
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    // Escape closes the dialog, unless a menu is open on top of it (it closes itself first)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || document.querySelector('.floating')) return;
+      onClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+  useEffect(() => {
+    // keyboard focus stays inside, the page behind does not scroll, focus goes back where it was on close
+    const before = document.activeElement as HTMLElement | null;
+    const el = box.current;
+    const focusable = () => Array.from(el?.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') ?? []).filter((n) => !n.hasAttribute('disabled') && n.offsetParent !== null);
+    if (el && !el.contains(document.activeElement)) (focusable().find((n) => !n.classList.contains('icon-btn')) ?? focusable()[0] ?? el).focus({ preventScroll: true });
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !el) return;
+      const list = focusable();
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !el.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onTab);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onTab);
+      document.body.style.overflow = previous;
+      if (before && document.contains(before)) before.focus({ preventScroll: true });
+    };
+  }, []);
   // rendered at the page root: no scrolling list or toolbar around it can clip it or restyle it
   return createPortal(
     <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: width }} role="dialog" aria-modal>
+      <div ref={box} className="modal" style={{ maxWidth: width }} role="dialog" aria-modal tabIndex={-1}>
         <header className="modal-head">
           <h2>{title}</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Fermer">

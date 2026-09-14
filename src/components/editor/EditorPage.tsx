@@ -38,7 +38,7 @@ export function EditorPage({ id }: { id: string }) {
   const hasRefVideo = useEditor((s) => !!s.doc?.video);
   const refVisible = useRefVideo((s) => s.visible);
   // computer: panels side by side, resizable; the video sits above the formations list
-  const columns = useMedia('(min-width: 861px)');
+  const columns = useMedia('(min-width: 861px) and (min-height: 501px)');
   const docked = hasRefVideo && refVisible && wide;
   const videoColumn = docked && columns;
   const leftWidth = useLayout((s) => (videoColumn ? s.side : s.left));

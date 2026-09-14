@@ -76,7 +76,7 @@ function readTimelineOpen() {
   } catch {
     /* private mode */
   }
-  return typeof window === 'undefined' || window.innerWidth > 860;
+  return typeof window === 'undefined' || (window.innerWidth > 860 && window.innerHeight > 500);
 }
 
 export const useEditor = create<EditorState>((set, get) => ({

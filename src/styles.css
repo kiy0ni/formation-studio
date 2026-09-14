@@ -2119,7 +2119,7 @@ kbd {
 .center-row {
   justify-content: center;
 }
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .video-export {
     grid-template-columns: 1fr;
   }
@@ -2841,7 +2841,7 @@ kbd {
 .update-notice > svg {
   color: var(--accent);
 }
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .download-grid {
     grid-template-columns: 1fr;
   }
@@ -2936,7 +2936,7 @@ kbd {
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .hide-sm {
     display: none !important;
   }
@@ -3883,7 +3883,7 @@ kbd {
 }
 
 /* ------------------------------- phones ------------------------------- */
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .desktop-only,
   .hide-sm {
     display: none !important;
@@ -4122,7 +4122,7 @@ input[type='checkbox'].switch {
   width: 44px;
   accent-color: initial;
 }
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .lib-top {
     flex-wrap: wrap;
   }
@@ -4240,7 +4240,7 @@ input[type='checkbox'].switch {
 .account-actions .btn {
   flex: 1;
 }
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .lib-actions .account-btn {
     margin: 0 4px;
   }
@@ -4398,7 +4398,7 @@ input[type='checkbox'].switch {
 }
 
 /* phone: template and team cards carry several buttons, give them the full width */
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .cards.discover,
   .cards.teams {
     grid-template-columns: minmax(0, 1fr);
@@ -4416,7 +4416,7 @@ input[type='checkbox'].switch {
 }
 
 /* phone: every control big enough for a finger */
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .segmented button {
     min-height: 38px;
     padding-inline: 12px;
@@ -4474,7 +4474,7 @@ input[type='checkbox'].switch {
 }
 
 /* phone: print sheet toolbar wraps instead of widening the page */
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .print-page {
     overflow-x: hidden;
   }
@@ -4583,7 +4583,7 @@ input[type='checkbox'].switch {
 
 /* phone library: a fixed frame like the editor. Only the list scrolls, the bottom bar is part of the
    frame, so it always sits at the bottom (iPhone home-screen apps misplace "fixed" bars on short pages) */
-@media (max-width: 860px) {
+@media (max-width: 860px), (max-height: 500px) {
   .library {
     position: fixed;
     inset: 0;
@@ -4846,7 +4846,7 @@ html.webview-short {
 /* ============================================================================
    Computer: resizable panels, reference video above the formations list
    ========================================================================== */
-@media (min-width: 861px) {
+@media (min-width: 861px) and (min-height: 501px) {
   .editor-main {
     position: relative;
     grid-template-columns: var(--left-w, 200px) minmax(0, 1fr) var(--right-w, 320px);
@@ -4931,7 +4931,7 @@ html.webview-short {
     pointer-events: none;
   }
 }
-@media (min-width: 861px) and (max-width: 1100px) {
+@media (min-width: 861px) and (max-width: 1100px) and (min-height: 501px) {
   .editor-main {
     grid-template-columns: var(--left-w, 180px) minmax(0, 1fr) var(--right-w, 280px);
   }
@@ -4955,7 +4955,7 @@ body:has(.editor):not(:has(.modal-backdrop)) .toast {
   top: calc(env(safe-area-inset-top, 0px) + 62px);
 }
 /* computer: the hint bubble sits at the top of the stage, the notification just under it */
-@media (min-width: 861px) {
+@media (min-width: 861px) and (min-height: 501px) {
   body:has(.editor):not(:has(.modal-backdrop)) .toast {
     top: 112px;
   }

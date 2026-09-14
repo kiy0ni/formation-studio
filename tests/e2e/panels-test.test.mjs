@@ -199,5 +199,17 @@ await step('phone sideways (740×360): video beside the stage as before', async 
   await ctx.close();
 });
 
+await step('wide phone sideways (932×430): phone layout, not three tiny columns', async () => {
+  const { ctx, page } = await editor({ viewport: { width: 932, height: 430 }, userAgent: IPHONE, isMobile: true, hasTouch: true }, 'wide-landscape');
+  expect(!(await page.$('.side-col')) && !(await page.$('.panel-resizer')), 'no desktop columns');
+  const toolbar = await page.$eval('.toolbar', (e) => getComputedStyle(e).display !== 'none').catch(() => false);
+  expect(toolbar, 'phone toolbar shown');
+  const stage = await rect(page, '.stage-wrap');
+  log('stage', Math.round(stage.w), '×', Math.round(stage.h));
+  expect(stage.h >= 180, 'stage keeps a usable height');
+  await page.screenshot({ path: `${SP}/panels-07-wide-landscape.png` });
+  await ctx.close();
+});
+
 await browser.close();
 console.log(errors.length ? `\nERRORS:\n${errors.join('\n')}` : '\nno errors');
