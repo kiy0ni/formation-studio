@@ -28,6 +28,8 @@ import type { Choreo, Easing, ID, PathKind } from '../../lib/types';
 import { useCollisions } from '../../store/derived';
 import { currentItem, useEditor, type InspectorTab } from '../../store/editor';
 import { useLibrary } from '../../store/library';
+import { VIDEO_REFERENCE_ENABLED } from '../../lib/config';
+import { RefVideoPanel } from '../../video/RefVideoPanel';
 import { importMusicFile, redetectBpm, useMusic } from '../../store/music';
 import { playback } from '../../store/playback';
 import { Collapsible, Tip } from '../common/Collapsible';
@@ -45,6 +47,7 @@ export const TABS: { id: InspectorTab; icon: IconName; label: string; phone: boo
   { id: 'props', icon: 'box', label: 'Objets', phone: true, desktop: true },
   { id: 'music', icon: 'music', label: 'Musique', phone: false, desktop: true },
   { id: 'stage', icon: 'stage', label: 'Scène', phone: false, desktop: true },
+  { id: 'video', icon: 'video', label: 'Vidéo de référence', phone: false, desktop: false },
   { id: 'more', icon: 'dots', label: 'Plus', phone: true, desktop: false },
 ];
 
@@ -52,7 +55,7 @@ export function Inspector() {
   const tab = useEditor((s) => s.tab);
   const set = useEditor((s) => s.set);
   const current = TABS.find((t) => t.id === tab) ?? TABS[0];
-  const fromMore = current.id === 'music' || current.id === 'stage';
+  const fromMore = current.id === 'music' || current.id === 'stage' || current.id === 'video';
   return (
     <aside className="inspector">
       <div className="sheet-head">
@@ -78,6 +81,7 @@ export function Inspector() {
         {current.id === 'music' && <MusicPanel />}
         {current.id === 'stage' && <StagePanel />}
         {current.id === 'more' && <MorePanel />}
+        {current.id === 'video' && VIDEO_REFERENCE_ENABLED && <RefVideoPanel />}
       </div>
     </aside>
   );
@@ -820,6 +824,14 @@ function MusicPanel() {
         ) : null}
       </Collapsible>
 
+      {VIDEO_REFERENCE_ENABLED && (
+        <div className="panel-block">
+          <button className="btn small block" onClick={() => useEditor.setState({ tab: 'video' })}>
+            <Icon name="video" size={14} /> {doc.video ? 'Vidéo de référence' : 'Ajouter une vidéo de référence'}
+          </button>
+        </div>
+      )}
+
       <Collapsible id="music-playback" icon="play" title="Répétition">
         <Segmented value={String(rate)} onChange={(v) => playback.setRate(Number(v))} options={['0.5', '0.75', '1', '1.25'].map((v) => ({ value: v, label: `${v.replace('.', ',')}×` }))} />
         {music.bpm ? <Toggle checked={metronome} onChange={(v) => useEditor.setState({ metronome: v })} label="Métronome" /> : null}
@@ -911,6 +923,7 @@ function MorePanel() {
     <div className="more">
       <div className="more-group">
         {row('music', 'Musique', () => set({ tab: 'music' }), doc.music.name)}
+        {VIDEO_REFERENCE_ENABLED && row('video', 'Vidéo de référence', () => set({ tab: 'video' }), doc.video?.name)}
         {row('stage', 'Scène', () => set({ tab: 'stage' }), `${doc.stage.width} × ${doc.stage.depth} m`)}
       </div>
       <div className="more-group">

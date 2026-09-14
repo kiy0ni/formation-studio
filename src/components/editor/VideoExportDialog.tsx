@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { VIDEO_REFERENCE_ENABLED } from '../../lib/config';
+import { db } from '../../lib/db';
 import { download, safe } from '../../lib/exporters';
+import { createReferenceRenderer } from '../../video/referenceRender';
 import { IS_PHONE_APP } from '../../lib/platform';
 import { formatTime, sortedDancers, totalDuration } from '../../lib/model';
 import type { VideoProgress, VideoResult } from '../../lib/videoExport';
@@ -10,7 +13,7 @@ import { Icon } from '../common/Icon';
 import { notify } from '../common/Toast';
 import { Modal, Segmented, Toggle } from '../common/ui';
 
-type Settings = Omit<VideoOptions, 'range'> & { rangeKind: 'all' | 'current' };
+type Settings = Omit<VideoOptions, 'range'> & { rangeKind: 'all' | 'current'; withReference: boolean };
 
 type Phase =
   | { kind: 'setup' }
@@ -33,12 +36,44 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
       showNotes: true,
       focusDancer: s.focusDancer,
       includeAudio: !!s.doc?.music.hash,
+      withReference: VIDEO_REFERENCE_ENABLED && !!s.doc?.video,
     };
   });
   const [phase, setPhase] = useState<Phase>({ kind: 'setup' });
   const abortRef = useRef<AbortController | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const urlRef = useRef<string | null>(null);
+  // reference video: its file on this device, and a hidden player for the preview frame
+  const [refBlob, setRefBlob] = useState<Blob | null>(null);
+  const previewVideo = useRef<HTMLVideoElement | null>(null);
+  const [frameTick, setFrameTick] = useState(0);
+  const refInfo = VIDEO_REFERENCE_ENABLED ? doc.video ?? null : null;
+  useEffect(() => {
+    if (!refInfo) return void setRefBlob(null);
+    let alive = true;
+    db.getVideo(refInfo.hash).then((b) => alive && setRefBlob(b ?? null));
+    return () => {
+      alive = false;
+    };
+  }, [refInfo?.hash]);
+  useEffect(() => {
+    if (!refBlob) return;
+    const url = URL.createObjectURL(refBlob);
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = 'auto';
+    v.onloadeddata = () => setFrameTick((n) => n + 1);
+    v.onseeked = () => setFrameTick((n) => n + 1);
+    v.src = url;
+    previewVideo.current = v;
+    return () => {
+      previewVideo.current = null;
+      v.removeAttribute('src');
+      v.load();
+      URL.revokeObjectURL(url);
+    };
+  }, [refBlob]);
 
   const range = useMemo(() => {
     if (cfg.rangeKind === 'all') return { start: 0, end: Math.max(1, totalDuration(doc)) };
@@ -49,6 +84,13 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
 
   const [previewT, setPreviewT] = useState(range.start);
   useEffect(() => setPreviewT(range.start), [range.start]);
+  const useReference = cfg.withReference && !!refBlob && !!refInfo;
+  useEffect(() => {
+    const v = previewVideo.current;
+    if (!v || !refInfo || !useReference) return;
+    const target = Math.max(0, Math.min(Math.max(0, refInfo.duration - 0.05), previewT + refInfo.offset));
+    if (Math.abs(v.currentTime - target) > 0.02) v.currentTime = target;
+  }, [previewT, useReference, refInfo, refBlob]);
 
   const { width, height } = videoSize(cfg.aspect, cfg.resolution);
   const options: VideoOptions = { ...cfg, range };
@@ -59,9 +101,14 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
     const c = canvasRef.current;
     c.width = width;
     c.height = height;
-    createRenderer(doc, width, height, options).draw(c.getContext('2d')!, previewT);
+    if (useReference) {
+      const r = createReferenceRenderer(doc, width, height, options, { blob: refBlob!, info: refInfo! });
+      const v = previewVideo.current;
+      if (v && v.readyState >= 2) r.setFrame(v, v.videoWidth, v.videoHeight);
+      r.draw(c.getContext('2d')!, previewT);
+    } else createRenderer(doc, width, height, options).draw(c.getContext('2d')!, previewT);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc, width, height, previewT, phase.kind, JSON.stringify(options)]);
+  }, [doc, width, height, previewT, phase.kind, JSON.stringify(options), useReference, frameTick]);
 
   useEffect(
     () => () => {
@@ -86,7 +133,7 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
       let last = 0;
       const result = await exportVideo(
         doc,
-        options,
+        { ...options, reference: useReference ? { blob: refBlob!, info: refInfo! } : undefined },
         (progress) => {
           const now = performance.now();
           if (now - last > 80 || progress.ratio >= 0.98) {
@@ -205,6 +252,13 @@ export function VideoExportDialog({ onClose }: { onClose: () => void }) {
               <Toggle checked={cfg.showPaths} onChange={(showPaths) => set({ showPaths })} label="Trajets" />
               <Toggle checked={cfg.showCounts} onChange={(showCounts) => set({ showCounts })} label={doc.music.bpm ? 'Comptes (8 temps)' : 'Comptes (BPM requis)'} />
               <Toggle checked={cfg.showNotes} onChange={(showNotes) => set({ showNotes })} label="Notes" />
+              {refInfo && (
+                <Toggle
+                  checked={useReference}
+                  onChange={(withReference) => set({ withReference })}
+                  label={refBlob ? (cfg.aspect === 'landscape' ? 'Vidéo de référence (à côté)' : 'Vidéo de référence (au-dessus)') : 'Vidéo de référence (absente ici)'}
+                />
+              )}
             </div>
             <button className="btn primary block" onClick={start}>
               <Icon name="video" /> Créer la vidéo

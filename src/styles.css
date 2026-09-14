@@ -5006,3 +5006,184 @@ input[type='checkbox'].switch {
 html.webview-short {
   --safe-bottom: 0px;
 }
+
+/* ============================================================================
+   Reference video (src/video) — remove this block with the feature
+   ========================================================================== */
+.stage-view {
+  position: absolute;
+  inset: 0;
+}
+.stage-wrap.ref-docked {
+  --ref-w: clamp(220px, 34%, 460px);
+}
+.stage-wrap.ref-docked .stage-view {
+  left: var(--ref-w);
+}
+.ref-video {
+  position: absolute;
+  z-index: 6;
+  background: #000;
+  overflow: hidden;
+}
+.ref-video video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.ref-video video.mirror {
+  transform: scaleX(-1);
+}
+.ref-video.docked {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--ref-w);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+.ref-video.docked video,
+.ref-video.docked .ref-missing,
+.ref-video.docked .ref-loading {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+.ref-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 4px 4px 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 0;
+}
+.ref-video.floating {
+  width: min(42%, 190px);
+  max-height: 46%;
+  aspect-ratio: var(--ref-ar, 16 / 9);
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  touch-action: none;
+  cursor: grab;
+}
+.ref-video.floating.tl {
+  top: 60px;
+  left: 10px;
+}
+.ref-video.floating.tr {
+  top: 60px;
+  right: 10px;
+}
+.ref-video.floating.bl {
+  bottom: 12px;
+  left: 10px;
+}
+.ref-video.floating.br {
+  bottom: 12px;
+  right: 10px;
+}
+.ref-video.floating.expanded {
+  inset: 8px;
+  width: auto;
+  max-height: none;
+  aspect-ratio: auto;
+  z-index: 12;
+  cursor: zoom-out;
+}
+.ref-close {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ref-show {
+  position: absolute;
+  top: 60px;
+  right: 10px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 99px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ref-missing {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.ref-missing span {
+  color: var(--text);
+  font-weight: 600;
+}
+.ref-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ref-busy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.ref-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* docked video (computer, tablet, phone sideways): the video keeps its shape at the top of the column */
+.stage-wrap.ref-docked {
+  --ref-w: clamp(240px, 38%, 520px);
+}
+.ref-video.docked {
+  background: var(--bg);
+}
+.ref-video.docked video,
+.ref-video.docked .ref-missing,
+.ref-video.docked .ref-loading {
+  flex: 0 1 auto;
+  width: 100%;
+  height: auto;
+  max-height: calc(100% - 44px);
+  background: #000;
+}
+.ref-video.docked .ref-missing,
+.ref-video.docked .ref-loading {
+  aspect-ratio: 16 / 9;
+}

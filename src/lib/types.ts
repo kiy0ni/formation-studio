@@ -92,6 +92,18 @@ export interface MusicInfo {
   countsPerPhrase?: number;
 }
 
+/** Reference video (dance practice, clip) watched beside the stage. The file stays on each device. */
+export interface RefVideo {
+  hash: string;
+  name: string;
+  duration: number;
+  width: number;
+  height: number;
+  /** Seconds added to the choreography time to find the matching video frame. */
+  offset: number;
+  mirror: boolean;
+}
+
 export interface Choreo {
   id: ID;
   name: string;
@@ -103,6 +115,7 @@ export interface Choreo {
   dancers: Record<ID, Dancer>;
   formations: Record<ID, Formation>;
   props: Record<ID, Prop>;
+  video?: RefVideo | null;
   collab?: CollabLink | null;
 }
 
