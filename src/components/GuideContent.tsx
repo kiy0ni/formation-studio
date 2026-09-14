@@ -99,6 +99,9 @@ const SECTIONS: GuideSection[] = [
         <li>
           <B>Répétition</B> : vitesse 0,5×, métronome. Boucle : bouton ⚙ du lecteur.
         </li>
+        <li>
+          <B>Vidéo de référence</B> (Plus → Vidéo de référence) : la dance practice défile avec la musique. Glissez-la dans un coin, touchez-la pour l’agrandir. Miroir et décalage dans ses réglages.
+        </li>
       </ul>
     ),
   },

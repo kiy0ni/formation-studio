@@ -9,6 +9,9 @@ import { currentItem, onLocalChange, useEditor, type InspectorTab } from '../../
 import { loadMusic } from '../../store/music';
 import { playback } from '../../store/playback';
 import { useSaveStatus } from '../../store/save';
+import { VIDEO_REFERENCE_ENABLED } from '../../lib/config';
+import { useRefVideo } from '../../video/refVideo';
+import { RefVideoPlayer, useWideLayout } from '../../video/RefVideoPlayer';
 import { Icon } from '../common/Icon';
 import { FormationList } from './FormationList';
 import { Inspector, TABS } from './Inspector';
@@ -30,6 +33,9 @@ export function EditorPage({ id }: { id: string }) {
   const collabKey = useEditor((s) => (s.doc?.collab ? `${s.doc.collab.roomId}|${s.doc.collab.key}` : ''));
   const musicHash = useEditor((s) => s.doc?.music.hash);
   const [tour, setTour] = useState(false);
+  const wide = useWideLayout();
+  const hasRefVideo = useEditor((s) => VIDEO_REFERENCE_ENABLED && !!s.doc?.video);
+  const refVisible = useRefVideo((s) => s.visible);
 
   useEffect(() => {
     let alive = true;
@@ -155,14 +161,17 @@ export function EditorPage({ id }: { id: string }) {
       <TopBar />
       <div className="editor-main">
         <FormationList />
-        <div className="stage-wrap">
-          {view === '2d' ? (
-            <Stage2D />
-          ) : (
-            <Suspense fallback={<div className="center-screen"><div className="spinner" /></div>}>
-              <Stage3D />
-            </Suspense>
-          )}
+        <div className={`stage-wrap ${hasRefVideo && refVisible && wide ? 'ref-docked' : ''}`}>
+          <div className="stage-view">
+            {view === '2d' ? (
+              <Stage2D />
+            ) : (
+              <Suspense fallback={<div className="center-screen"><div className="spinner" /></div>}>
+                <Stage3D />
+              </Suspense>
+            )}
+          </div>
+          {hasRefVideo && <RefVideoPlayer wide={wide} />}
           <CoachTip />
           <SelectionBar />
         </div>

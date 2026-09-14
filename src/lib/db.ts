@@ -7,6 +7,8 @@ const folders = createStore('fs-folders', 'kv');
 const audio = createStore('fs-audio', 'kv');
 const collab = createStore('fs-collab', 'kv');
 const prefs = createStore('fs-prefs', 'kv');
+/** Reference videos: device only, never synced. */
+const videos = createStore('fs-video', 'kv');
 /** Local edits not yet sent to the account ("d:kind:id") and sync bookkeeping ("m:key"). */
 const sync = createStore('fs-sync', 'kv');
 
@@ -73,6 +75,10 @@ export const db = {
     await set(hash, blob, audio);
     if (!o?.remote) await mark('audio', hash, Date.now());
   },
+
+  getVideo: (hash: string) => get<Blob>(hash, videos),
+  putVideo: (hash: string, blob: Blob) => set(hash, blob, videos),
+  deleteVideo: (hash: string) => del(hash, videos),
 
   getCollabState: <T>(choreoId: ID) => get<T>(choreoId, collab),
   setCollabState: <T>(choreoId: ID, state: T) => set(choreoId, state, collab),

@@ -2,6 +2,7 @@ import { decodeAudio } from './audio';
 import { db } from './db';
 import type { Choreo } from './types';
 import { createRenderer, FPS, videoSize, type VideoOptions } from './videoRender';
+import { createReferenceRenderer, type FrameRenderer, type ReferenceInput } from '../video/referenceRender';
 
 export interface VideoResult {
   blob: Blob;
@@ -17,7 +18,10 @@ export interface VideoProgress {
   mode: 'fast' | 'realtime';
 }
 
-type Renderer = ReturnType<typeof createRenderer>;
+type Renderer = FrameRenderer;
+
+/** Video export settings; `reference` adds the reference video beside / above the stage. */
+export type VideoExportOptions = VideoOptions & { reference?: ReferenceInput };
 
 const abortError = () => new DOMException('Export annulé', 'AbortError');
 export const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
@@ -65,13 +69,13 @@ function splitAudio(buf: AudioBuffer, seconds: number): AudioBuffer[] {
   return out;
 }
 
-export async function exportVideo(doc: Choreo, o: VideoOptions, onProgress: (p: VideoProgress) => void, signal: AbortSignal): Promise<VideoResult> {
+export async function exportVideo(doc: Choreo, o: VideoExportOptions, onProgress: (p: VideoProgress) => void, signal: AbortSignal): Promise<VideoResult> {
   const { width, height } = videoSize(o.aspect, o.resolution);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d', { alpha: false })!;
-  const renderer = createRenderer(doc, width, height, o);
+  const renderer: Renderer = o.reference ? createReferenceRenderer(doc, width, height, o, o.reference) : createRenderer(doc, width, height, o);
   const duration = Math.max(0.5, o.range.end - o.range.start);
   const audio = o.includeAudio && doc.music.hash ? await audioSlice(doc.music.hash, o.range.start, o.range.end).catch(() => null) : null;
   if (signal.aborted) throw abortError();
@@ -141,6 +145,7 @@ async function encodeFast(
         audioTime += chunks[chunk].duration;
         chunk++;
       }
+      if (renderer.prepare) await stallGuard(renderer.prepare(o.range.start + t), 30_000);
       renderer.draw(ctx, o.range.start + t);
       await stallGuard(video.add(t, 1 / FPS), i === 0 ? 45_000 : 30_000);
       if (i % 8 === 0) {
@@ -196,6 +201,7 @@ async function recordRealtime(
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise<void>((resolve) => (rec.onstop = () => resolve()));
 
+  await renderer.startRealtime?.(o.range.start);
   renderer.draw(ctx, o.range.start);
   rec.start(250);
   const t0 = ac.currentTime + 0.15;
@@ -220,6 +226,7 @@ async function recordRealtime(
       /* already stopped */
     }
     stream.getTracks().forEach((t) => t.stop());
+    renderer.stopRealtime?.();
   }
   await stopped;
   ac.close();

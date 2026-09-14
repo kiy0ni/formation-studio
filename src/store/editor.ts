@@ -10,7 +10,7 @@ interface HistoryEntry {
   after: Patch;
 }
 
-export type InspectorTab = 'formation' | 'dancers' | 'presets' | 'props' | 'stage' | 'music' | 'more';
+export type InspectorTab = 'formation' | 'dancers' | 'presets' | 'props' | 'stage' | 'music' | 'video' | 'more';
 export type EditorDialog = null | 'video' | 'share' | 'guide' | 'shortcuts';
 
 export interface EditorState {
