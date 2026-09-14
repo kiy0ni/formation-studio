@@ -298,10 +298,14 @@ function applyToOpenEditor(remote: Choreo) {
 
 async function push(sb: SupabaseClient) {
   const entries = await syncStore.listDirty();
-  // music first, so a choreography never arrives without its song
+  // music first, so a choreography usually arrives with its song; a song that fails never blocks the rest
   for (const e of entries.filter((x) => x.kind === 'audio')) {
-    await uploadAudio(sb, e.id);
-    await syncStore.clearDirty('audio', e.id, e.at);
+    try {
+      await uploadAudio(sb, e.id);
+      await syncStore.clearDirty('audio', e.id, e.at);
+    } catch (err) {
+      console.warn('[sync] music not sent, retried next time:', e.id, err);
+    }
   }
   const rows: Omit<Row, 'server_ts'>[] = [];
   const sent: DirtyEntry[] = [];
@@ -326,8 +330,11 @@ const audioPath = (hash: string) => `${session!.user.id}/${hash}`;
 
 async function uploadAudio(sb: SupabaseClient, hash: string) {
   const blob = await db.getAudio(hash);
-  if (!blob) return;
-  const { error } = await sb.storage.from('audio').upload(audioPath(hash), blob, { upsert: false, contentType: blob.type || 'application/octet-stream' });
+  if (!(blob instanceof Blob) || !blob.size) return; // nothing usable stored for this song
+  // bytes in memory: blobs read back from IndexedDB can reach the network empty in some web views
+  const bytes = await blob.arrayBuffer().catch(() => null);
+  if (!bytes?.byteLength) return;
+  const { error } = await sb.storage.from('audio').upload(audioPath(hash), bytes, { upsert: false, contentType: blob.type || 'application/octet-stream' });
   if (error && !/exists|duplicate|409/i.test(`${error.message} ${(error as { statusCode?: string }).statusCode ?? ''}`)) throw new Error(error.message);
 }
 
