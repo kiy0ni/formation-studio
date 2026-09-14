@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { computePeaks, decodeAudio, detectBpm, hashBlob } from '../lib/audio';
 import { db } from '../lib/db';
+import { audioBufferToWav, extractAudio, isVideoFile } from '../lib/media';
 import type { MusicInfo } from '../lib/types';
 import { playback } from './playback';
 
@@ -44,16 +45,35 @@ export async function loadMusic(hash: string | undefined, fetchRemote?: (hash: s
   }
 }
 
-/** Stores the file offline, decodes it and estimates BPM. */
-export async function importMusicFile(file: File): Promise<MusicInfo> {
-  const hash = await hashBlob(file);
-  await db.putAudio(hash, file);
-  const buffer = await decodeAudio(file);
+export type ImportStage = 'extract' | 'analyze';
+
+/**
+ * Stores the song offline, decodes it and estimates BPM.
+ * Videos are accepted: only their sound track is kept.
+ */
+export async function importMusicFile(file: File, onStage?: (stage: ImportStage) => void): Promise<MusicInfo & { fromVideo: boolean }> {
+  const fromVideo = isVideoFile(file);
+  let audio: Blob = file;
+  if (fromVideo) {
+    onStage?.('extract');
+    audio = await extractAudio(file);
+  }
+  onStage?.('analyze');
+  let buffer: AudioBuffer;
+  try {
+    buffer = await decodeAudio(audio);
+  } catch (e) {
+    if (!fromVideo) throw e;
+    // the extracted track isn't playable here: decode the video itself and keep a WAV
+    buffer = await decodeAudio(file);
+    audio = audioBufferToWav(buffer);
+  }
+  const hash = await hashBlob(audio);
+  await db.putAudio(hash, audio);
   const tempo = detectBpm(buffer);
-  const my = ++token;
-  playback.setBlob(file);
+  ++token;
+  playback.setBlob(audio);
   useMusic.setState({ hash, peaks: computePeaks(buffer), duration: buffer.duration, loading: false, missing: false });
-  void my;
   return {
     hash,
     name: file.name.replace(/\.[^.]+$/, ''),
@@ -61,6 +81,7 @@ export async function importMusicFile(file: File): Promise<MusicInfo> {
     bpm: tempo?.bpm,
     beatOffset: tempo?.offset ?? 0,
     countsPerPhrase: 8,
+    fromVideo,
   };
 }
 

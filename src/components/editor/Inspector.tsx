@@ -4,6 +4,7 @@ import { applyPreset, stagger, swap, transform, type TransformKind } from '../..
 import { PROP_COLORS } from '../../lib/colors';
 import { db } from '../../lib/db';
 import { describePos } from '../../lib/exporters';
+import { isMediaFile, MEDIA_ACCEPT } from '../../lib/media';
 import { uid } from '../../lib/id';
 import {
   addDancer,
@@ -733,22 +734,25 @@ function MusicPanel() {
   const update = useEditor((s) => s.update);
   const { loading, missing } = useMusic();
   const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState<'extract' | 'analyze'>('analyze');
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const taps = useRef<number[]>([]);
   const music = doc.music;
 
   const onFile = async (file: File) => {
-    if (!file.type.startsWith('audio/') && !/\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(file.name)) return alert('Ce fichier n’est pas un fichier audio.');
+    if (!isMediaFile(file)) return alert('Ce fichier n’est ni une musique (MP3, M4A, WAV…) ni une vidéo (MP4, MOV…).');
     setBusy(true);
+    setStage('analyze');
     try {
-      const info = await importMusicFile(file);
+      const { fromVideo, ...info } = await importMusicFile(file, setStage);
       update('Importer la musique', (d) => {
         d.music = { ...info, countsPerPhrase: d.music.countsPerPhrase ?? 8 };
       });
-      notify(info.bpm ? `Musique importée · ${info.bpm} BPM détectés` : 'Musique importée');
-    } catch {
-      alert('Impossible de lire ce fichier audio.');
+      notify(`${fromVideo ? 'Son de la vidéo importé' : 'Musique importée'}${info.bpm ? ` · ${info.bpm} BPM détectés` : ''}`);
+    } catch (e) {
+      const msg = (e as Error)?.message ?? '';
+      alert(msg.startsWith('Cette') || msg.startsWith('Impossible') ? msg : 'Impossible de lire ce fichier.');
     } finally {
       setBusy(false);
     }
@@ -809,11 +813,21 @@ function MusicPanel() {
         ) : (
           <button className={`dropzone ${dragOver ? 'drag' : ''}`} disabled={readOnly || busy} onClick={() => fileRef.current?.click()}>
             <Icon name="upload" size={24} />
-            <b>{busy ? 'Analyse de la musique…' : 'Importer la musique'}</b>
-            <span>Touchez pour choisir un fichier, ou glissez-le ici (MP3, WAV, M4A). Le tempo est détecté automatiquement.</span>
+            <b>{busy ? (stage === 'extract' ? 'Extraction du son de la vidéo…' : 'Analyse de la musique…') : 'Importer la musique'}</b>
+            <span>Touchez pour choisir une chanson (MP3, M4A, WAV) ou une vidéo (MP4, MOV) dont seul le son est gardé. Le tempo est détecté automatiquement.</span>
           </button>
         )}
-        <input ref={fileRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+        <input
+          ref={fileRef}
+          type="file"
+          accept={MEDIA_ACCEPT}
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (f) onFile(f);
+          }}
+        />
       </div>
 
       <Collapsible id="music-tempo" icon="metronome" title="Tempo et comptes" hint="Pour voir les « 5, 6, 7, 8 » et caler les formations" defaultOpen>

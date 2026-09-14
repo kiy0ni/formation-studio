@@ -1,6 +1,7 @@
 import { produce } from 'immer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { exportBackup, importBackup, isBackup } from '../../lib/backup';
+import { isMediaFile, MEDIA_ACCEPT } from '../../lib/media';
 import { FOLDER_COLORS } from '../../lib/colors';
 import { COLLAB_ENABLED } from '../../lib/config';
 import { db } from '../../lib/db';
@@ -14,7 +15,7 @@ import { GuideContent } from '../GuideContent';
 import { FormationThumb } from '../common/FormationThumb';
 import { Icon } from '../common/Icon';
 import { notify } from '../common/Toast';
-import { Menu, MenuItem, Modal, TextField } from '../common/ui';
+import { Menu, MenuItem, Modal } from '../common/ui';
 import { DiscoverView } from './DiscoverView';
 import { InstallButton } from './InstallButton';
 import { NewChoreoDialog } from './NewChoreoDialog';
@@ -24,7 +25,7 @@ import { TeamsView } from './TeamsView';
 type Tab = 'choreos' | 'teams' | 'discover' | 'guide';
 
 const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-const isAudio = (f: File) => f.type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(f.name);
+const isAudio = isMediaFile;
 
 export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
   const { choreos, teams, folders, loaded, refresh } = useLibrary();
@@ -115,7 +116,7 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
     if (!f) return;
     if (isAudio(f)) setCreating({ file: f });
     else if (f.name.endsWith('.json') || f.type === 'application/json') onImport(f);
-    else alert('Glissez une musique (MP3, WAV…) pour créer une chorégraphie, ou un fichier .json pour l’importer.');
+    else alert('Glissez une musique ou une vidéo pour créer une chorégraphie, ou un fichier .json pour l’importer.');
   };
 
   const folderCount = (id: string) => choreos.filter((c) => c.folderId === id).length;
@@ -344,7 +345,7 @@ export function LibraryPage({ tab, create }: { tab: Tab; create?: boolean }) {
         <div className="drop-overlay">
           <div>
             <Icon name="music" size={40} />
-            <b>Déposez la musique pour créer une chorégraphie</b>
+            <b>Déposez la musique (ou une vidéo) pour créer une chorégraphie</b>
             <span>ou un fichier .json pour l’importer</span>
           </div>
         </div>
@@ -447,7 +448,17 @@ function Welcome({ onCreate, onImportMusic }: { onCreate: () => void; onImportMu
       <p className="hint">
         Astuce : glissez un MP3 sur cette page · <button className="link-btn" onClick={() => navigate('/guide')}>Lire le guide</button>
       </p>
-      <input ref={fileRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden onChange={(e) => e.target.files?.[0] && onImportMusic(e.target.files[0])} />
+      <input
+        ref={fileRef}
+        type="file"
+        accept={MEDIA_ACCEPT}
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) onImportMusic(f);
+        }}
+      />
     </div>
   );
 }
@@ -532,7 +543,16 @@ function FolderDialog({ folder, onClose, onSave, onDelete }: { folder: Folder; o
         </>
       }
     >
-      <TextField label="Nom" value={f.name} onChange={(name) => setF({ ...f, name })} placeholder="ex : Comeback été, Cover contest…" />
+      <label className="field">
+        <span className="field-label">Nom</span>
+        <input
+          autoFocus
+          value={f.name}
+          placeholder="ex : Comeback été, Cover contest…"
+          onChange={(e) => setF({ ...f, name: e.target.value })}
+          onKeyDown={(e) => e.key === 'Enter' && f.name.trim() && onSave({ ...f, name: f.name.trim() })}
+        />
+      </label>
       <div className="field">
         <span className="field-label">Couleur</span>
         <div className="swatches">

@@ -1,13 +1,14 @@
 import { produce } from 'immer';
 import { useEffect, useRef, useState } from 'react';
 import { r2 } from '../../lib/geometry';
+import { isMediaFile, MEDIA_ACCEPT } from '../../lib/media';
 import { createChoreo, defaultMembers, formatTime, sortedFormations, STAGE_PRESETS } from '../../lib/model';
 import type { Choreo, Folder, MusicInfo, Team } from '../../lib/types';
 import { importMusicFile } from '../../store/music';
 import { Icon } from '../common/Icon';
 import { ColorDot, Modal, NumberField, Segmented } from '../common/ui';
 
-const isAudio = (f: File) => f.type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(f.name);
+const STAGE_LABEL = { extract: 'Extraction du son de la vidéo…', analyze: 'Analyse de la musique…' };
 
 export function NewChoreoDialog({
   teams,
@@ -29,6 +30,7 @@ export function NewChoreoDialog({
   const [step, setStep] = useState<'music' | 'group'>('music');
   const [music, setMusic] = useState<MusicInfo | null>(null);
   const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState<keyof typeof STAGE_LABEL>('analyze');
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -45,15 +47,16 @@ export function NewChoreoDialog({
   const [folderId, setFolderId] = useState<string | null>(initialFolderId);
 
   const loadFile = async (file: File) => {
-    if (!isAudio(file)) return setError('Ce fichier n’est pas un fichier audio (MP3, WAV, M4A…).');
+    if (!isMediaFile(file)) return setError('Ce fichier n’est ni une musique (MP3, M4A, WAV…) ni une vidéo (MP4, MOV…).');
     setError(null);
     setBusy(true);
+    setStage('analyze');
     try {
-      const info = await importMusicFile(file);
+      const { fromVideo: _fromVideo, ...info } = await importMusicFile(file, setStage);
       setMusic(info);
       setName((n) => n || info.name || '');
-    } catch {
-      setError('Impossible de lire ce fichier audio.');
+    } catch (e) {
+      setError((e as Error)?.message?.startsWith('Cette') || (e as Error)?.message?.startsWith('Impossible') ? (e as Error).message : 'Impossible de lire ce fichier.');
     } finally {
       setBusy(false);
     }
@@ -112,7 +115,7 @@ export function NewChoreoDialog({
             <span className="grow" />
             {!music && (
               <button className="btn ghost" disabled={busy} onClick={() => setStep('group')}>
-                Sans musique pour l’instant
+                Sans musique
               </button>
             )}
             <button className="btn primary" disabled={!music || busy} onClick={() => setStep('group')}>
@@ -175,15 +178,25 @@ export function NewChoreoDialog({
               }}
             >
               {busy ? <div className="spinner" /> : <Icon name="music" size={30} />}
-              <b>{busy ? 'Analyse de la musique…' : 'Importer la musique'}</b>
-              <span>Touchez pour choisir la chanson, ou glissez le fichier ici.</span>
+              <b>{busy ? STAGE_LABEL[stage] : 'Importer la musique'}</b>
+              <span>Touchez pour choisir la chanson ou une vidéo (seul le son est gardé), ou glissez le fichier ici.</span>
             </button>
           )}
           {error && <p className="error-text">{error}</p>}
           <p className="hint">
             Commencer par la musique permet de voir les comptes « 5, 6, 7, 8 » et de caler chaque formation sur les temps. Le fichier reste sur cet appareil.
           </p>
-          <input ref={fileRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden onChange={(e) => e.target.files?.[0] && loadFile(e.target.files[0])} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept={MEDIA_ACCEPT}
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = '';
+              if (f) loadFile(f);
+            }}
+          />
         </>
       )}
 

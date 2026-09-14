@@ -99,6 +99,7 @@ const SECTIONS: GuideSection[] = [
     body: (
       <ul>
         <li>Onglet <B>Musique</B> : importez ou changez la chanson. Elle est enregistrée sur l’appareil et marche hors connexion.</li>
+        <li>Vous n’avez que la vidéo (MP4, MOV filmé au téléphone…) ? Importez-la directement : seul le son est récupéré.</li>
         <li>Le BPM est détecté automatiquement. Sinon : tapez en rythme sur <B>Tap tempo</B>, ou saisissez-le.</li>
         <li>Le badge rose « 3 · 5 » pendant la lecture veut dire : phrase 3, temps 5. Les repères « 8×n » apparaissent sur la timeline.</li>
         <li>Si les comptes sont décalés : placez le curseur exactement sur un « 1 » de la musique et touchez <B>Le « 1 » est ici</B>.</li>

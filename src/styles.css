@@ -3089,6 +3089,18 @@ kbd {
 .lib-main.narrow {
   max-width: 920px;
 }
+/* installed app on iPhone: keep content clear of the notch / home bar */
+.lib-header {
+  padding-top: max(14px, env(safe-area-inset-top));
+  padding-left: max(24px, env(safe-area-inset-left));
+  padding-right: max(24px, env(safe-area-inset-right));
+}
+.topbar {
+  padding-top: max(6px, env(safe-area-inset-top));
+}
+.lib-tabs {
+  scrollbar-width: none;
+}
 
 /* guide */
 .guide {
@@ -3203,6 +3215,15 @@ kbd {
 
   .only-sm {
     display: inline-flex !important;
+  }
+  .modal-foot {
+    flex-wrap: wrap;
+  }
+  .modal-foot .grow {
+    display: none;
+  }
+  .modal-foot .btn {
+    flex: 1 1 auto;
   }
   .icon-btn {
     width: 36px;
