@@ -30,6 +30,7 @@
     "@capacitor/ios": "^8.5.2",
     "@capacitor/share": "^8.0.1",
     "@mediabunny/aac-encoder": "^1.56.2",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@supabase/supabase-js": "^2.116.0",
     "idb-keyval": "^6.3.0",
     "immer": "^11.1.18",

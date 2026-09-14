@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useCollab } from '../../collab/client';
+import { DetectGhosts } from '../../detect/DetectGhosts';
 import { dist, initials, r2, samplePath, textOn } from '../../lib/geometry';
 import {
   clampToStage,
@@ -435,6 +436,8 @@ export function Stage2D() {
               </g>
             );
           })}
+
+          <DetectGhosts time={time} radius={r} />
 
           {/* ghost of previous formation */}
           {showGhost && !playing && holding && prev &&

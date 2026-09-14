@@ -69,6 +69,21 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
 - Les réglages (miroir, décalage) suivent sur les autres appareils et dans les chorégraphies partagées ; chacun importe la vidéo de son côté.
 - Une vidéo importée comme musique est aussi gardée comme vidéo de référence (option dans la création).
 
+## Détection automatique (bêta)
+
+- Réglages de la vidéo de référence → **Détection automatique** :
+  - **Analyser la vidéo** repère les danseurs (3 images par seconde, sur l'appareil, hors ligne une fois le moteur téléchargé), les suit dans le temps, puis propose les formations (moments où le groupe tient) et leurs timings.
+  - Relecture : nombre de personnes, plus ou moins de formations, profondeur, gauche/droite, « qui danse qui » (moins de danseurs que dans la vidéo : les autres sont ignorés), échange de deux personnes confondues.
+  - Appliquer **Tout**, **Positions** (garde les timings) ou **Timings** (garde les positions) : une seule étape d'annulation.
+- **Placer depuis l'image** : la formation affichée prend les positions de l'image de la vidéo au curseur.
+- **Voir les positions détectées** : cercles pointillés sur la scène pendant la lecture.
+- Aucun réglage du sol à faire : la profondeur vient de la taille des danseurs (plus loin = plus petit).
+- Moteur : MediaPipe Object Detector (EfficientDet-Lite0, `public/detect/person-detector.tflite`, 7 Mo) + WebAssembly (~11 Mo), téléchargés seulement à la première utilisation (exclus du pré-cache hors ligne). Résultats gardés par vidéo dans IndexedDB `fs-detect`.
+- Code isolé dans `src/detect/` ; points d'accroche : `<DetectSection />` dans `src/video/RefVideoPanel.tsx`, `<DetectGhosts />` dans `src/components/editor/Stage2D.tsx`, filtre `vision_wasm` dans `vite.config.ts`.
+- **Retirer la fonctionnalité** :
+  - rapide : `AUTO_DETECT_ENABLED = false` dans `src/lib/config.ts`, puis publier ;
+  - complet : revenir au repère `avant-detection-auto` (`git revert` du merge « Détection automatique », ou `git reset --hard avant-detection-auto` sur une branche), puis `npm uninstall @mediapipe/tasks-vision` si besoin.
+
 ## iPhone
 
 - Le plus simple : Safari → le site → Partager → « Sur l’écran d’accueil » (gratuit, permanent, même compte).

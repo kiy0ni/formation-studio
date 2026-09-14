@@ -13,7 +13,10 @@ function serviceWorker(): Plugin {
     apply: 'build',
     closeBundle() {
       const dist = fileURLToPath(new URL('./dist/', import.meta.url));
-      const assets = readdirSync(`${dist}assets`).map((f) => `assets/${f}`);
+      // the detection engine (tens of MB) is downloaded only by those who use it
+      const assets = readdirSync(`${dist}assets`)
+        .filter((f) => !f.startsWith('vision_wasm'))
+        .map((f) => `assets/${f}`);
       const sw = readFileSync(`${dist}sw.js`, 'utf8')
         .replace('__BUILD__', Date.now().toString(36))
         .replace('"__PRECACHE__"', JSON.stringify(assets));

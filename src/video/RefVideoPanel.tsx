@@ -4,6 +4,7 @@ import { notify } from '../components/common/Toast';
 import { NumberField, Toggle } from '../components/common/ui';
 import { formatTime } from '../lib/model';
 import { useEditor } from '../store/editor';
+import { DetectSection } from '../detect/DetectSection';
 import { importMusicFile } from '../store/music';
 import {
   loadRefVideo,
@@ -144,6 +145,7 @@ export function RefVideoPanel() {
           )}
         </div>
       )}
+      <DetectSection />
     </>
   );
 }
