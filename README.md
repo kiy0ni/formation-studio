@@ -76,7 +76,7 @@ La version en ligne n'inclut pas la collaboration en temps réel (elle nécessit
   - Relecture : nombre de personnes, plus ou moins de formations, profondeur, gauche/droite, « qui danse qui » (moins de danseurs que dans la vidéo : les autres sont ignorés), échange de deux personnes confondues.
   - Appliquer **Tout**, **Positions** (garde les timings) ou **Timings** (garde les positions) : une seule étape d'annulation.
 - **Placer depuis l'image** : la formation affichée prend les positions de l'image de la vidéo au curseur.
-- **Voir les positions détectées** : cercles pointillés sur la scène pendant la lecture.
+- **Voir les positions détectées** : cercles pointillés sur la scène pendant la lecture. Ils suivent la même horloge et le même placement que les formations écrites (`anchors` des `Ghosts` : calage sur les temps, centrage, repères de la grille, recentrage) : pendant une formation ils sont sur les danseurs, pendant une transition ils montrent le vrai déplacement vu dans la vidéo.
 - Aucun réglage du sol à faire : la profondeur vient de la taille des danseurs (plus loin = plus petit).
 - Analyse **Rapide** (3 images/s) ou **Précise** (5 images/s, conseillée). Le suivi, les vitesses, les trajets et les positions fantômes travaillent avec les instants réels des images (`times`). Essayé et écarté : des images supplémentaires autour des croisements (+90 % de temps, pas plus juste) et une empreinte MobileNet des personnes (moins bonne que les couleurs pour distinguer des tenues).
 - Chaque formation est centrée gauche-droite sur la scène (option « Centrer chaque formation », activée) : la caméra n'est jamais exactement au milieu de la salle.

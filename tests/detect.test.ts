@@ -155,3 +155,52 @@ test('floor: further away means smaller, positions come back in meters', () => {
   const far = toFloor(floor, dets[0]);
   assert.ok(near.y > far.y, 'closer to the camera = larger y');
 });
+
+test('ghosts: on the dancers in every formation, on the snapped clock', async () => {
+  const { ghostAt } = await import('../src/detect/formations');
+  const ghosts = {
+    hash: 'g',
+    start: 0,
+    fps: 5,
+    tracks: [{ color: '#fff', xs: [0, 0, 0], ys: [0, 0, 0] }],
+    anchors: [
+      { t: 0, v: 1, dx: [0.5], dy: [0] },
+      { t: 2, v: 3.2, dx: [0.5], dy: [0] },
+      { t: 4, v: 5, dx: [-0.5], dy: [1] },
+    ],
+  };
+  // inside a formation: the video clock shifted to the snapped one, the person moved like the written position
+  const a = ghostAt(ghosts, 1, 0);
+  assert.ok(Math.abs(a.v - 2.1) < 1e-9 && a.dx![0] === 0.5);
+  // during the transition: halfway between the two placements
+  const b = ghostAt(ghosts, 3, 0);
+  assert.ok(Math.abs(b.v - 4.1) < 1e-9 && Math.abs(b.dx![0]) < 1e-9 && Math.abs(b.dy![0] - 0.5) < 1e-9);
+  // before and after: same shift, time runs on
+  assert.ok(Math.abs(ghostAt(ghosts, 6, 0).v - 7) < 1e-9);
+  // old ghosts without anchors: video time = choreography time + offset
+  assert.deepEqual(ghostAt({ ...ghosts, anchors: undefined }, 2, 0.5), { v: 2.5, dx: null, dy: null });
+});
+
+test('apply: anchors put each ghost exactly on its dancer during the hold', async () => {
+  const { applyDetection, findFormations, placeTracks, centerFormations, DEFAULT_PLACEMENT, positionsOver } = await import('../src/detect/formations');
+  const { createChoreo, defaultMembers } = await import('../src/lib/model');
+  const { an } = synthetic();
+  const floor = fitFloor(an.frames.flat(), an.width, an.height);
+  const tracking = trackPeople(an, floor);
+  const doc = createChoreo({ name: 't', members: defaultMembers(3) });
+  const placed = placeTracks(tracking.tracks, doc.stage, DEFAULT_PLACEMENT);
+  const formations = centerFormations(findFormations(placed.tracks, an.times, an.fps, 0.5));
+  const ids = Object.keys(doc.dancers);
+  const draft = structuredClone(doc);
+  const result = applyDetection(draft, doc, { mode: 'all', formations, tracks: placed.tracks, times: an.times, mapping: ids, recenter: false, snap: false, grid: true, paths: false, center: true });
+  assert.equal(result.anchors.length, formations.length * 2);
+  const written = Object.values(draft.formations).sort((x, y) => x.order - y.order);
+  formations.forEach((f, i) => {
+    const raw = positionsOver(placed.tracks, f.ranges);
+    const anchor = result.anchors[i * 2];
+    ids.forEach((id, k) => {
+      const p = written[i].positions[id];
+      assert.ok(Math.abs(raw[k].x + anchor.dx[k] - p.x) < 0.011 && Math.abs(raw[k].y + anchor.dy[k] - p.y) < 0.011, `formation ${i + 1}, dancer ${k + 1}`);
+    });
+  });
+});

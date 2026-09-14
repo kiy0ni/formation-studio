@@ -2,7 +2,7 @@ import { r2 } from '../lib/geometry';
 import { uid } from '../lib/id';
 import { clampToStage, computeFrame, snapTime, sortedDancers, sortedFormations, timeline } from '../lib/model';
 import type { Choreo, Dancer, ID, PathSpec, Position, StageSettings, Vec } from '../lib/types';
-import type { Analysis, Ghosts, ReviewSettings, Swap } from './analysis';
+import type { Analysis, GhostAnchor, Ghosts, ReviewSettings, Swap } from './analysis';
 import { median, percentile } from './floor';
 import type { Track } from './track';
 
@@ -397,7 +397,28 @@ export interface ApplyInput {
   snap: boolean;
   grid: boolean;
   paths: boolean;
+  /** Each formation centred left-right (the formations given are already centred; positions mode centres here). */
+  center: boolean;
 }
+
+export interface ApplyResult {
+  message: string;
+  anchors: GhostAnchor[];
+}
+
+/** How much each person moved between where they were seen and where they were put on the stage. */
+function moves(raw: Vec[], applied: (Vec | undefined)[]) {
+  return {
+    dx: raw.map((p, k) => r2((applied[k]?.x ?? p.x) - p.x)),
+    dy: raw.map((p, k) => r2((applied[k]?.y ?? p.y) - p.y)),
+  };
+}
+
+const centred = (positions: Vec[]) => {
+  if (!positions.length) return positions;
+  const mid = positions.reduce((sum, p) => sum + p.x, 0) / positions.length;
+  return positions.map((p) => ({ x: p.x - mid, y: p.y }));
+};
 
 /** Holds converted to the choreography clock, snapped to the beats, never overlapping. */
 function choreoHolds(original: Choreo, formations: DetectedFormation[], snap: boolean) {
@@ -422,14 +443,19 @@ function choreoHolds(original: Choreo, formations: DetectedFormation[], snap: bo
   return holds.map((h) => ({ ...h, a: r2(h.a), b: r2(h.b) }));
 }
 
-/** Writes the detection into the choreography (inside an editor update: one undo step). Returns a short report. */
-export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInput): string {
+/**
+ * Writes the detection into the choreography (inside an editor update: one undo step).
+ * Returns a short report and the anchors that line the ghosts up with what was written.
+ */
+export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInput): ApplyResult {
   const { mapping, recenter, grid } = input;
   const holds = choreoHolds(original, input.formations, input.snap);
   const stage = original.stage;
+  const anchors: GhostAnchor[] = [];
+  const done = (message: string): ApplyResult => ({ message, anchors });
 
   if (input.mode === 'all') {
-    if (!holds.length) return 'Aucune formation trouvée dans la vidéo';
+    if (!holds.length) return done('Aucune formation trouvée dans la vidéo');
     for (const id of Object.keys(draft.formations)) delete draft.formations[id];
     const dancers = sortedDancers(original);
     const placedBy: Map<ID, Vec>[] = [];
@@ -437,6 +463,9 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
       const at = computeFrame(original, h.a + 0.001);
       const mine = dancerPositions(h.f.positions, mapping, recenter, grid, stage);
       placedBy.push(mine);
+      const raw = positionsOver(input.tracks, h.f.ranges);
+      const shift = moves(raw, h.f.positions.map((p, k) => (mapping[k] ? (mine.get(mapping[k]!) ?? p) : p)));
+      anchors.push({ t: h.a, v: h.f.start, ...shift }, { t: h.b, v: h.f.end, ...shift });
       const positions: Record<ID, Position> = {};
       for (const d of dancers) {
         const p = mine.get(d.id);
@@ -470,7 +499,7 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
         props,
       };
     });
-    return `${holds.length} formation${holds.length > 1 ? 's' : ''} créée${holds.length > 1 ? 's' : ''} d’après la vidéo`;
+    return done(`${holds.length} formation${holds.length > 1 ? 's' : ''} créée${holds.length > 1 ? 's' : ''} d’après la vidéo`);
   }
 
   if (input.mode === 'positions') {
@@ -489,15 +518,19 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
         for (let i = 1; i < times.length; i++) if (Math.abs(times[i] - mid) < Math.abs(times[best] - mid)) best = i;
         indices = [best];
       }
-      const positions = tracks.map((t) => ({ x: median(indices.map((i) => t.xs[i])), y: median(indices.map((i) => t.ys[i])) }));
+      const raw = tracks.map((t) => ({ x: median(indices.map((i) => t.xs[i])), y: median(indices.map((i) => t.ys[i])) }));
+      const positions = input.center ? centred(raw) : raw;
       const f = draft.formations[it.f.id];
-      for (const [id, p] of dancerPositions(positions, mapping, recenter, grid, stage)) {
+      const mine = dancerPositions(positions, mapping, recenter, grid, stage);
+      for (const [id, p] of mine) {
         if (!draft.dancers[id]) continue;
         f.positions[id] = { ...keepExtras(f.positions[id]), ...p };
       }
+      const shift = moves(raw, positions.map((p, k) => (mapping[k] ? (mine.get(mapping[k]!) ?? p) : p)));
+      anchors.push({ t: it.start, v: a, ...shift }, { t: it.holdEnd, v: b, ...shift });
       changed++;
     }
-    return changed ? `Danseurs placés sur ${changed} formation${changed > 1 ? 's' : ''}` : 'La vidéo ne couvre pas vos formations (vérifiez le décalage)';
+    return done(changed ? `Danseurs placés sur ${changed} formation${changed > 1 ? 's' : ''}` : 'La vidéo ne couvre pas vos formations (vérifiez le décalage)');
   }
 
   // timings: the formations keep their positions, their durations follow the video
@@ -508,15 +541,40 @@ export function applyDetection(draft: Choreo, original: Choreo, input: ApplyInpu
     const h = holds[i];
     f.duration = r2(h.b - h.a);
     if (holds[i + 1]) f.transition = r2(holds[i + 1].a - h.b);
+    // positions are the choreography's own: the ghosts only follow the new timings (and the centring)
+    const shift = moves(positionsOver(input.tracks, h.f.ranges), h.f.positions);
+    anchors.push({ t: h.a, v: h.f.start, ...shift }, { t: h.b, v: h.f.end, ...shift });
   }
-  if (!k) return 'Aucune formation trouvée dans la vidéo';
-  return holds.length === list.length
-    ? `Timings calés sur ${k} formation${k > 1 ? 's' : ''}`
-    : `Timings calés sur ${k} formation${k > 1 ? 's' : ''} (${holds.length} trouvée${holds.length > 1 ? 's' : ''} dans la vidéo, ${list.length} dans la choré)`;
+  if (!k) return done('Aucune formation trouvée dans la vidéo');
+  return done(
+    holds.length === list.length
+      ? `Timings calés sur ${k} formation${k > 1 ? 's' : ''}`
+      : `Timings calés sur ${k} formation${k > 1 ? 's' : ''} (${holds.length} trouvée${holds.length > 1 ? 's' : ''} dans la vidéo, ${list.length} dans la choré)`,
+  );
 }
 
-/** The reviewed positions over time, in the colors of this choreography's dancers. */
-export function buildGhosts(an: Analysis, tracks: Placed[], mapping: (ID | null)[], dancers: Record<ID, Dancer>): Ghosts {
+/** Where a ghost is at choreography time `t`: the video time to read, and how much to move each person. */
+export function ghostAt(ghosts: Ghosts, t: number, offset: number): { v: number; dx: number[] | null; dy: number[] | null } {
+  const anchors = ghosts.anchors;
+  if (!anchors?.length) return { v: t + offset, dx: null, dy: null };
+  const first = anchors[0];
+  const last = anchors[anchors.length - 1];
+  if (t <= first.t) return { v: first.v + (t - first.t), dx: first.dx, dy: first.dy };
+  if (t >= last.t) return { v: last.v + (t - last.t), dx: last.dx, dy: last.dy };
+  let j = 0;
+  while (j < anchors.length - 2 && anchors[j + 1].t < t) j++;
+  const a = anchors[j];
+  const b = anchors[j + 1];
+  const u = b.t > a.t ? (t - a.t) / (b.t - a.t) : 0;
+  return {
+    v: a.v + (b.v - a.v) * u,
+    dx: a.dx.map((d, k) => d + ((b.dx[k] ?? d) - d) * u),
+    dy: a.dy.map((d, k) => d + ((b.dy[k] ?? d) - d) * u),
+  };
+}
+
+/** The reviewed positions over time, in the colors of this choreography's dancers, lined up with what was applied. */
+export function buildGhosts(an: Analysis, tracks: Placed[], mapping: (ID | null)[], dancers: Record<ID, Dancer>, anchors?: GhostAnchor[]): Ghosts {
   const start = an.times[0] ?? 0;
   const end = an.times[an.times.length - 1] ?? start;
   const count = Math.max(1, Math.round((end - start) * an.fps) + 1);
@@ -542,5 +600,6 @@ export function buildGhosts(an: Analysis, tracks: Placed[], mapping: (ID | null)
       xs: resample(t.xs),
       ys: resample(t.ys),
     })),
+    ...(anchors?.length ? { anchors } : {}),
   };
 }

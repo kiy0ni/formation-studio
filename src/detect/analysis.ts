@@ -50,6 +50,20 @@ export interface Ghosts {
   start: number;
   fps: number;
   tracks: { color: string; xs: number[]; ys: number[] }[];
+  /**
+   * How the choreography was made from the video: at choreography time `t` the video is at `v`, and each person was
+   * moved by (`dx`, `dy`) when put on the stage (formation centred, stage marks, kept on the stage). Between two anchors
+   * both are interpolated, so the ghosts match the dancers in every formation and follow the beats the formations were
+   * snapped to. Missing on ghosts saved before 2.2.
+   */
+  anchors?: GhostAnchor[];
+}
+
+export interface GhostAnchor {
+  t: number;
+  v: number;
+  dx: number[];
+  dy: number[];
 }
 
 export interface Analysis {

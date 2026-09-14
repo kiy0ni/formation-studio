@@ -215,6 +215,21 @@ await step('desktop: detected positions on the stage during playback', async () 
   const ghosts = await page.$$eval('.detect-ghosts circle', (els) => els.length);
   log('ghost circles:', ghosts);
   expect(ghosts === 6, 'six detected positions drawn');
+  // held formation: each ghost sits on a dancer (same centring, marks and clock as the written formation)
+  const gap = await page.evaluate(() => {
+    const dancers = [...document.querySelectorAll('g.dancer')].map((g) => {
+      const m = /translate\(([-\d.]+)[ ,]+([-\d.]+)\)/.exec(g.getAttribute('transform') || '');
+      return m ? { x: Number(m[1]), y: Number(m[2]) } : null;
+    }).filter(Boolean);
+    const gaps = [...document.querySelectorAll('.detect-ghosts circle')].map((c) => {
+      const x = Number(c.getAttribute('cx'));
+      const y = Number(c.getAttribute('cy'));
+      return Math.min(...dancers.map((d) => Math.hypot(d.x - x, d.y - y)));
+    }).sort((a, b) => a - b);
+    return { median: gaps[gaps.length >> 1], worst: gaps[gaps.length - 1] };
+  });
+  log('ghost ↔ dancer distance (m):', JSON.stringify(gap));
+  expect(gap.median < 0.35, `ghosts on the dancers (median gap ${gap.median.toFixed(2)} m)`);
   await page.screenshot({ path: `${SP}/det-07-ghosts.png` });
 });
 
