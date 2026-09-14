@@ -1,7 +1,7 @@
 // Shared helpers of the browser tests.
 import { chromium } from 'playwright-core';
 
-export const BASE = 'http://127.0.0.1:8811/formation-studio/';
+export const BASE = 'http://127.0.0.1:8811/lineup/';
 export const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 const DEFAULT_CHROME = `${process.env.HOME}/Library/Caches/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-mac-arm64/chrome-headless-shell`;
 

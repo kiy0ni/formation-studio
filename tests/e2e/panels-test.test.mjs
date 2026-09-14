@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 
 const SP = process.env.SP;
 const CLIP = `${SP}/detect/youdaone-480.mp4`;
-const BASE = 'http://127.0.0.1:8811/formation-studio/';
+const BASE = 'http://127.0.0.1:8811/lineup/';
 const exe = process.env.CHROME || `${process.env.HOME}/Library/Caches/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-mac-arm64/chrome-headless-shell`;
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 const browser = await chromium.launch({ executablePath: exe });

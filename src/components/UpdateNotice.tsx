@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { APP_VERSION, downloadForThisDevice, IS_NATIVE_APP, isNewer, openExternal } from '../lib/platform';
+import { APP_VERSION, downloadForThisDevice, IS_NATIVE_APP, isNewer, openExternal, REPO } from '../lib/platform';
 import { Icon } from './common/Icon';
 
 const CHECK_EVERY = 6 * 3600 * 1000;
@@ -16,7 +16,7 @@ export function UpdateNotice() {
     const cached = localStorage.getItem('fs-update-latest');
     if (cached) show(cached);
     if (Date.now() - Number(localStorage.getItem('fs-update-check') || 0) < CHECK_EVERY) return;
-    fetch('https://api.github.com/repos/kiy0ni/formation-studio/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+    fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } })
       .then((r) => (r.ok ? r.json() : null))
       .then((release) => {
         const v = typeof release?.tag_name === 'string' ? release.tag_name.replace(/^v/, '') : null;

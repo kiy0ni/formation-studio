@@ -4,7 +4,7 @@ Application web pour créer des **formations de danse K-pop synchronisées avec 
 
 ## Applications à télécharger (Mac, Windows, Android)
 
-Les dernières versions sont sur **https://github.com/kiy0ni/formation-studio/releases/latest** (aussi accessibles depuis le bouton « Installer l'app » du site) :
+Les dernières versions sont sur **https://github.com/kiy0ni/lineup/releases/latest** (aussi accessibles depuis le bouton « Installer l'app » du site) :
 
 | Appareil | Fichier |
 | --- | --- |
@@ -26,9 +26,13 @@ Les apps sont distribuées hors des stores, sans certificat payant : un avertiss
 
 **Clé de signature Android** : `~/.formation-studio/android-release.jks` et `android-signing.properties` (hors du dépôt). Sauvegardez ce dossier en lieu sûr : sans cette clé, les téléphones refuseront d'installer une mise à jour par-dessus l'app existante.
 
+## Adresse
+
+Le dépôt s'appelle **kiy0ni/lineup** (anciennement `formation-studio`). Le site est sur **https://kiy0ni.github.io/lineup/**. L'ancienne adresse `https://kiy0ni.github.io/formation-studio/` (apps installées, QR des premières affiches, liens de partage déjà envoyés) renvoie vers la nouvelle grâce au dépôt `kiy0ni/kiy0ni.github.io` (page de redirection qui garde le lien de partage `#/join/…`). Ne pas recréer de dépôt nommé `formation-studio` : GitHub cesserait de rediriger les anciens liens de téléchargement vers `lineup`.
+
 ## Installer l'app (Mac, Android, iPhone)
 
-Ouvrez **https://kiy0ni.github.io/formation-studio/** puis :
+Ouvrez **https://kiy0ni.github.io/lineup/** puis :
 
 - **Mac – Safari** : menu *Fichier* → *Ajouter au Dock…*
 - **Mac – Chrome / Edge** : icône d'installation à droite de la barre d'adresse

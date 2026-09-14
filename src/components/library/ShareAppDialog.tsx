@@ -3,7 +3,7 @@ import { Icon } from '../common/Icon';
 import { notify } from '../common/Toast';
 import { Modal } from '../common/ui';
 
-export const SITE_URL = 'https://kiy0ni.github.io/formation-studio/';
+export const SITE_URL = 'https://kiy0ni.github.io/lineup/';
 const MESSAGE = 'Lineup : créez vos formations de danse, synchronisées avec la musique. Gratuit.';
 
 /** QR code as SVG squares (black on white, readable by every phone camera). */

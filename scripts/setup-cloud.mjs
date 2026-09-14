@@ -12,7 +12,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const secrets = join(homedir(), '.formation-studio');
 const tokenFile = join(secrets, 'supabase-token');
 const NAME = 'formation-studio';
-const SITE = 'https://kiy0ni.github.io/formation-studio/';
+const SITE = 'https://kiy0ni.github.io/lineup/';
 
 if (!existsSync(tokenFile)) {
   console.error('✗ Token absent : créez-le sur https://supabase.com/dashboard/account/tokens puis enregistrez-le dans ~/.formation-studio/supabase-token');

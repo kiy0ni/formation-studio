@@ -18,4 +18,4 @@ git commit -q -m "Déploiement $(date '+%Y-%m-%d %H:%M')"
 git push -f -q "$REMOTE" gh-pages
 rm -rf "$TMP"
 
-echo "Publié → https://kiy0ni.github.io/formation-studio/ (en ligne d'ici 1 à 2 minutes)"
+echo "Publié → https://kiy0ni.github.io/lineup/ (en ligne d'ici 1 à 2 minutes)"
